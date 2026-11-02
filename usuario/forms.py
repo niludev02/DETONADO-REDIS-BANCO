@@ -1,15 +1,55 @@
 from django import forms
 
 class CadastroForm(forms.Form):
-    nome = forms.CharField(max_length=100)
-    email = forms.EmailField()
+    nome = forms.CharField(
+        max_length=100,
+        label="Nome",
+        widget=forms.TextInput(
+            attrs={
+                "autocomplete": "name",
+                "placeholder": "Como podemos te chamar?",
+            }
+        ),
+    )
+    email = forms.EmailField(
+        label="E-mail",
+        widget=forms.EmailInput(
+            attrs={
+                "autocomplete": "email",
+                "placeholder": "voce@exemplo.com",
+            }
+        ),
+    )
     senha = forms.CharField(
-        widget=forms.PasswordInput,
-        min_length=8
+        label="Senha",
+        widget=forms.PasswordInput(
+            attrs={
+                "autocomplete": "new-password",
+                "placeholder": "Crie uma senha segura",
+            }
+        ),
+        min_length=8,
     )
     confirmar_senha = forms.CharField(
-        widget=forms.PasswordInput
+        label="Confirmar senha",
+        widget=forms.PasswordInput(
+            attrs={
+                "autocomplete": "new-password",
+                "placeholder": "Digite a senha novamente",
+            }
+        ),
     )
+
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        for campo in self.fields.values():
+            campo.widget.attrs["class"] = (
+                "flex h-11 w-full rounded-md border border-input bg-background "
+                "px-3 py-2 text-sm text-foreground shadow-sm transition-colors "
+                "placeholder:text-muted-foreground focus-visible:outline-none "
+                "focus-visible:ring-1 focus-visible:ring-ring "
+                "disabled:cursor-not-allowed disabled:opacity-50"
+            )
 
     def clean(self):
         dados = super().clean()

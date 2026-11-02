@@ -9,62 +9,73 @@
     <link rel="stylesheet" href="{% static 'css/output.css' %}">
 </head>
 <body class="min-h-screen bg-background text-foreground">
-    <main class="flex min-h-screen items-center justify-center px-4 py-12">
+    <main class="relative isolate flex min-h-screen items-center justify-center overflow-hidden px-4 py-12 sm:px-6">
+        <div aria-hidden="true" class="pointer-events-none absolute inset-x-0 top-0 -z-10 h-96 bg-[radial-gradient(ellipse_at_top,rgba(139,92,246,0.16),transparent_65%)]"></div>
         <section class="w-full max-w-md">
-            <a href="{% url 'home:index' %}" class="mb-8 block text-center" aria-label="DETONADO — início">
+            <a href="{% url 'home:index' %}" class="mb-8 flex justify-center" aria-label="DETONADO — início">
                 <img
                     src="{% static 'img/logo.jpeg' %}"
                     alt="Detonado"
-                    class="mx-auto h-auto w-64 max-w-full object-contain"
+                    class="h-auto w-52 max-w-full object-contain"
                 >
             </a>
 
-            <div class="mb-8 text-center">
-                <h1 class="text-3xl font-bold tracking-tight">Entre para a comunidade</h1>
-                <p class="mt-3 text-zinc-400">
+            <div class="mb-7 text-center">
+                <h1 class="text-3xl font-semibold tracking-tight sm:text-4xl">Entre para a comunidade</h1>
+                <p class="mt-3 text-sm text-muted-foreground sm:text-base">
                     Crie sua conta e comece a explorar.
                 </p>
             </div>
 
-            <div class="rounded-2xl border border-zinc-800 bg-zinc-900 p-8">
-                <h2 class="mb-2 text-xl font-semibold">Criar conta</h2>
-                <p class="mb-7 text-sm text-zinc-400">
+            <div class="rounded-xl border border-border bg-card p-6 text-card-foreground shadow-lg shadow-black/10 sm:p-8">
+                <h2 class="text-xl font-semibold tracking-tight">Criar conta</h2>
+                <p class="mt-1.5 text-sm text-muted-foreground">
                     Preencha seus dados para se cadastrar.
                 </p>
 
-                {% if erros %}
-                    <div class="mb-5 rounded-lg border border-zinc-800 px-4 py-3 text-sm text-zinc-400"
+                {% if form.non_field_errors %}
+                    <div class="mt-6 rounded-md border border-destructive/40 bg-destructive/10 px-4 py-3 text-sm text-destructive"
                          role="alert" aria-live="polite">
-                        <ul class="list-inside list-disc space-y-1">
-                            {% for erro in erros %}
+                        <ul class="space-y-1">
+                            {% for erro in form.non_field_errors %}
                                 <li>{{ erro }}</li>
                             {% endfor %}
                         </ul>
                     </div>
                 {% endif %}
 
-                <form method="post" action="{% url 'usuarios:cadastro' %}" class="space-y-5">
+                <form method="post" action="{% url 'usuarios:cadastro' %}" class="mt-7 space-y-5">
                     {% csrf_token %}
-                    {{ form.as_p }}
+                    {% for campo in form %}
+                        <div class="space-y-2">
+                            <label for="{{ campo.id_for_label }}" class="text-sm font-medium leading-none">
+                                {{ campo.label }}
+                            </label>
+                            {{ campo }}
+                            {% for erro in campo.errors %}
+                                <p class="text-sm font-medium text-destructive">{{ erro }}</p>
+                            {% endfor %}
+                        </div>
+                    {% endfor %}
                     <button
                         type="submit"
-                        class="w-full rounded-lg bg-violet-600 py-3 font-medium text-white transition hover:bg-violet-500 focus-visible:ring-2 focus-visible:ring-violet-500"
+                        class="inline-flex h-11 w-full items-center justify-center rounded-md bg-primary px-4 text-sm font-medium text-primary-foreground shadow transition-colors hover:bg-primary/90 focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring disabled:pointer-events-none disabled:opacity-50"
                     >
                         Criar minha conta
                     </button>
                 </form>
 
-                <div class="mt-7 border-t border-zinc-800 pt-6 text-center">
-                    <p class="text-sm text-zinc-400">
+                <div class="mt-6 border-t border-border pt-6 text-center">
+                    <p class="text-sm text-muted-foreground">
                         Já tem uma conta?
-                        <a href="{% url 'usuarios:login' %}" class="font-medium text-violet-400 transition hover:text-violet-300">
+                        <a href="{% url 'usuarios:login' %}" class="font-medium text-primary underline-offset-4 transition-colors hover:underline">
                             Entrar
                         </a>
                     </p>
                 </div>
             </div>
 
-            <p class="mt-6 text-center text-xs text-zinc-600">
+            <p class="mt-6 text-center text-xs text-muted-foreground">
                 DETONADO — sua próxima descoberta começa aqui.
             </p>
         </section>
