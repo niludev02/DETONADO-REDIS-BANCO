@@ -1,0 +1,69 @@
+{% load static %}
+<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Detonado</title>
+    <link rel="stylesheet" href="{% static 'css/output.css' %}">
+</head>
+<body class="min-h-screen bg-background text-foreground">
+    {% include "home/partials/header.html" %}
+
+    <main>
+        <section class="mx-auto flex max-w-6xl flex-col items-center px-6 pb-24 pt-28 text-center">
+            <span class="mb-6 rounded-full border border-border bg-card px-4 py-1.5 text-xs font-medium text-muted-foreground">
+                Sua comunidade de jogos e guias
+            </span>
+
+            <h1 class="max-w-3xl text-4xl font-bold tracking-tight sm:text-6xl">
+                Sua central de
+                <span class="text-primary">jogos.</span>
+            </h1>
+
+            <p class="mt-5 max-w-xl text-base leading-relaxed text-muted-foreground sm:text-lg">
+                Explore universos, descubra segredos e encontre tudo o que precisa
+                para aproveitar seus jogos ao máximo.
+            </p>
+
+            <form action="{% url 'catalogo:index' %}" method="get"
+                  class="mt-10 flex w-full max-w-2xl items-center gap-3 rounded-xl border border-border bg-card p-2 transition focus-within:border-primary">
+                <svg aria-hidden="true" focusable="false" class="ml-3 size-5 shrink-0 text-muted-foreground"
+                     xmlns="http://www.w3.org/2000/svg" fill="none"
+                     viewBox="0 0 24 24" stroke="currentColor">
+                    <circle cx="11" cy="11" r="7" stroke-width="1.8"/>
+                    <path d="m16 16 4 4" stroke-width="1.8" stroke-linecap="round"/>
+                </svg>
+
+                <input
+                    type="search"
+                    name="q"
+                    aria-label="Buscar jogos, detonados ou conteúdos"
+                    placeholder="Busque por jogos, detonados ou conteúdos..."
+                    class="h-11 min-w-0 flex-1 bg-transparent text-sm text-foreground outline-none placeholder:text-muted-foreground"
+                >
+
+                <button type="submit"
+                        class="rounded-lg bg-primary px-5 py-3 text-sm font-semibold text-primary-foreground transition hover:bg-primary/90">
+                    <svg aria-hidden="true" focusable="false" class="size-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+                    <circle cx="11" cy="11" r="7"></circle>
+                    <path d="m20 20-4-4"></path>
+                </svg>
+                </button>
+            </form>
+
+            <div class="mt-6 flex flex-wrap justify-center gap-3">
+                <a href="{% url 'catalogo:index' %}"
+                   class="rounded-lg bg-foreground px-5 py-3 text-sm font-semibold text-background transition hover:bg-foreground/90">
+                    Explorar jogos
+                </a>
+
+                <a href="{% url 'catalogo:index' %}"
+                   class="rounded-lg border border-border px-5 py-3 text-sm font-medium text-muted-foreground transition hover:border-muted-foreground hover:bg-card">
+                    Ver detonados
+                </a>
+            </div>
+        </section>
+    </main>
+</body>
+</html>
