@@ -45,64 +45,7 @@
 
                 <form method="post" action="{% url 'usuarios:cadastro' %}" class="space-y-5">
                     {% csrf_token %}
-
-                    <div>
-                        <label for="nome" class="mb-2 block text-sm font-medium">Nome</label>
-                        <input
-                            type="text"
-                            id="nome"
-                            name="nome"
-                            value="{{ nome }}"
-                            placeholder="Como podemos te chamar?"
-                            autocomplete="name"
-                            maxlength="150"
-                            required
-                            autofocus
-                            class="w-full rounded-lg border border-zinc-800 bg-zinc-950 px-4 py-3 text-white outline-none transition placeholder:text-zinc-600 focus:border-violet-500"
-                        >
-                    </div>
-
-                    <div>
-                        <label for="email" class="mb-2 block text-sm font-medium">E-mail</label>
-                        <input
-                            type="email"
-                            id="email"
-                            name="email"
-                            value="{{ email }}"
-                            placeholder="voce@exemplo.com"
-                            autocomplete="email"
-                            maxlength="254"
-                            required
-                            class="w-full rounded-lg border border-zinc-800 bg-zinc-950 px-4 py-3 text-white outline-none transition placeholder:text-zinc-600 focus:border-violet-500"
-                        >
-                    </div>
-
-                    <div>
-                        <label for="senha" class="mb-2 block text-sm font-medium">Senha</label>
-                        <input
-                            type="password"
-                            id="senha"
-                            name="senha"
-                            placeholder="Crie uma senha segura"
-                            autocomplete="new-password"
-                            required
-                            class="w-full rounded-lg border border-zinc-800 bg-zinc-950 px-4 py-3 text-white outline-none transition placeholder:text-zinc-600 focus:border-violet-500"
-                        >
-                    </div>
-
-                    <div>
-                        <label for="confirmar_senha" class="mb-2 block text-sm font-medium">Confirmar senha</label>
-                        <input
-                            type="password"
-                            id="confirmar_senha"
-                            name="confirmar_senha"
-                            placeholder="Digite a senha novamente"
-                            autocomplete="new-password"
-                            required
-                            class="w-full rounded-lg border border-zinc-800 bg-zinc-950 px-4 py-3 text-white outline-none transition placeholder:text-zinc-600 focus:border-violet-500"
-                        >
-                    </div>
-
+                    {{ form.as_p }}
                     <button
                         type="submit"
                         class="w-full rounded-lg bg-violet-600 py-3 font-medium text-white transition hover:bg-violet-500 focus-visible:ring-2 focus-visible:ring-violet-500"
