@@ -1,0 +1,130 @@
+{% load static %}
+<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="theme-color" content="#09090b">
+    <title>Criar conta | DETONADO</title>
+    <link rel="stylesheet" href="{% static 'css/output.css' %}">
+</head>
+<body class="min-h-screen bg-background text-foreground">
+    <main class="flex min-h-screen items-center justify-center px-4 py-12">
+        <section class="w-full max-w-md">
+            <a href="{% url 'home:index' %}" class="mb-8 block text-center" aria-label="DETONADO — início">
+                <img
+                    src="{% static 'img/logo.jpeg' %}"
+                    alt="Detonado"
+                    class="mx-auto h-auto w-64 max-w-full object-contain"
+                >
+            </a>
+
+            <div class="mb-8 text-center">
+                <h1 class="text-3xl font-bold tracking-tight">Entre para a comunidade</h1>
+                <p class="mt-3 text-zinc-400">
+                    Crie sua conta e comece a explorar.
+                </p>
+            </div>
+
+            <div class="rounded-2xl border border-zinc-800 bg-zinc-900 p-8">
+                <h2 class="mb-2 text-xl font-semibold">Criar conta</h2>
+                <p class="mb-7 text-sm text-zinc-400">
+                    Preencha seus dados para se cadastrar.
+                </p>
+
+                {% if erros %}
+                    <div class="mb-5 rounded-lg border border-zinc-800 px-4 py-3 text-sm text-zinc-400"
+                         role="alert" aria-live="polite">
+                        <ul class="list-inside list-disc space-y-1">
+                            {% for erro in erros %}
+                                <li>{{ erro }}</li>
+                            {% endfor %}
+                        </ul>
+                    </div>
+                {% endif %}
+
+                <form method="post" action="{% url 'usuarios:cadastro' %}" class="space-y-5">
+                    {% csrf_token %}
+
+                    <div>
+                        <label for="nome" class="mb-2 block text-sm font-medium">Nome</label>
+                        <input
+                            type="text"
+                            id="nome"
+                            name="nome"
+                            value="{{ nome }}"
+                            placeholder="Como podemos te chamar?"
+                            autocomplete="name"
+                            maxlength="150"
+                            required
+                            autofocus
+                            class="w-full rounded-lg border border-zinc-800 bg-zinc-950 px-4 py-3 text-white outline-none transition placeholder:text-zinc-600 focus:border-violet-500"
+                        >
+                    </div>
+
+                    <div>
+                        <label for="email" class="mb-2 block text-sm font-medium">E-mail</label>
+                        <input
+                            type="email"
+                            id="email"
+                            name="email"
+                            value="{{ email }}"
+                            placeholder="voce@exemplo.com"
+                            autocomplete="email"
+                            maxlength="254"
+                            required
+                            class="w-full rounded-lg border border-zinc-800 bg-zinc-950 px-4 py-3 text-white outline-none transition placeholder:text-zinc-600 focus:border-violet-500"
+                        >
+                    </div>
+
+                    <div>
+                        <label for="senha" class="mb-2 block text-sm font-medium">Senha</label>
+                        <input
+                            type="password"
+                            id="senha"
+                            name="senha"
+                            placeholder="Crie uma senha segura"
+                            autocomplete="new-password"
+                            required
+                            class="w-full rounded-lg border border-zinc-800 bg-zinc-950 px-4 py-3 text-white outline-none transition placeholder:text-zinc-600 focus:border-violet-500"
+                        >
+                    </div>
+
+                    <div>
+                        <label for="confirmar_senha" class="mb-2 block text-sm font-medium">Confirmar senha</label>
+                        <input
+                            type="password"
+                            id="confirmar_senha"
+                            name="confirmar_senha"
+                            placeholder="Digite a senha novamente"
+                            autocomplete="new-password"
+                            required
+                            class="w-full rounded-lg border border-zinc-800 bg-zinc-950 px-4 py-3 text-white outline-none transition placeholder:text-zinc-600 focus:border-violet-500"
+                        >
+                    </div>
+
+                    <button
+                        type="submit"
+                        class="w-full rounded-lg bg-violet-600 py-3 font-medium text-white transition hover:bg-violet-500 focus-visible:ring-2 focus-visible:ring-violet-500"
+                    >
+                        Criar minha conta
+                    </button>
+                </form>
+
+                <div class="mt-7 border-t border-zinc-800 pt-6 text-center">
+                    <p class="text-sm text-zinc-400">
+                        Já tem uma conta?
+                        <a href="{% url 'usuarios:login' %}" class="font-medium text-violet-400 transition hover:text-violet-300">
+                            Entrar
+                        </a>
+                    </p>
+                </div>
+            </div>
+
+            <p class="mt-6 text-center text-xs text-zinc-600">
+                DETONADO — sua próxima descoberta começa aqui.
+            </p>
+        </section>
+    </main>
+</body>
+</html>
