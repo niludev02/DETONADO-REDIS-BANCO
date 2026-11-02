@@ -88,10 +88,36 @@ if errorlevel 1 (
     exit /b 1
 )
 
+REM Confere se o Node.js e o npm estao instalados para compilar o Tailwind.
+where npm >nul 2>&1
+if errorlevel 1 (
+    echo ERRO: npm nao encontrado. Instale o Node.js para compilar o CSS.
+    echo.
+    pause
+    exit /b 1
+)
+
+REM Instala as dependencias do Tailwind quando ainda nao estao disponiveis.
+if not exist "node_modules\@tailwindcss\cli\package.json" (
+    echo Instalando as dependencias do Tailwind...
+    call npm ci
+    if errorlevel 1 (
+        echo ERRO: nao foi possivel instalar as dependencias do Tailwind.
+        echo.
+        pause
+        exit /b 1
+    )
+)
+
+echo.
+echo Iniciando a compilacao automatica do Tailwind...
+start "Tailwind CSS" /D "%~dp0" cmd /k "npx @tailwindcss/cli -i input.css -o static\css\output.css --watch"
+
 echo.
 echo Iniciando o servidor Django...
 echo Acesse: http://127.0.0.1:8000/
-echo Para encerrar, pressione Ctrl+C nesta janela.
+echo O Tailwind esta compilando em outra janela.
+echo Para encerrar o Django, pressione Ctrl+C nesta janela.
 echo.
 
 python manage.py runserver
