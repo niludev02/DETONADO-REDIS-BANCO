@@ -40,6 +40,7 @@ INSTALLED_APPS = [
     "django_cotton",
     "home",
     "catalogo",
+    "usuario",
 ]
 
 MIDDLEWARE = [
