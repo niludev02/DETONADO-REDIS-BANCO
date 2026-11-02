@@ -26,6 +26,7 @@ SECRET_KEY = 'django-insecure-*5)))%=66@ko=+kv1x&b!gh7&$x$i6by1-*rx^=qtdm8#*ib$2
 DEBUG = True
 
 ALLOWED_HOSTS = ['localhost', '127.0.0.1', '.app.github.dev']
+CSRF_TRUSTED_ORIGINS = ['https://localhost:8000', 'https://*.app.github.dev']
 
 
 # Application definition
