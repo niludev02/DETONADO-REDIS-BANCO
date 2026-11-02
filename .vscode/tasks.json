@@ -4,7 +4,7 @@
     {
       "label": "Auto Pull Git",
       "type": "shell",
-      "command": "while true; do git pull; sleep 10; done",
+      "command": "while true; do git pull --ff-only -q || echo \"[$(date +%T)] pull falhou\"; sleep 10; done",
       "isBackground": true,
       "runOptions": {
         "runOn": "folderOpen"
