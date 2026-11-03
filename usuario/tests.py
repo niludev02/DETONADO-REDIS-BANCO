@@ -1,6 +1,8 @@
 from django.test import TestCase
 from django.contrib.auth import get_user_model
+from django.contrib.auth.hashers import make_password
 from django.urls import reverse
+from unittest.mock import patch
 
 
 class CadastroTests(TestCase):
@@ -121,3 +123,35 @@ class LoginTests(TestCase):
 
         self.assertEqual(resposta.status_code, 200)
         self.assertContains(resposta, "E-mail ou senha inválidos.")
+
+    @patch("usuario.views.redis_conn")
+    def test_login_com_conta_redis(self, redis):
+        redis.get.return_value = "redis-user-id"
+        redis.hgetall.return_value = {
+            "id": "redis-user-id",
+            "nome": "Jogador Redis",
+            "email": "redis@example.com",
+            "senha": make_password("senha-redis-segura"),
+        }
+
+        resposta = self.client.post(
+            self.url,
+            {"email": "redis@example.com", "senha": "senha-redis-segura"},
+        )
+
+        self.assertRedirects(resposta, reverse("home:index"))
+        self.assertEqual(self.client.session["usuario_id"], "redis-user-id")
+        self.assertEqual(
+            self.client.session["usuario_nome"], "Jogador Redis"
+        )
+
+    def test_logout_limpa_sessao_redis(self):
+        sessao = self.client.session
+        sessao["usuario_id"] = "redis-user-id"
+        sessao["usuario_nome"] = "Jogador Redis"
+        sessao.save()
+
+        resposta = self.client.post(reverse("usuarios:logout"))
+
+        self.assertRedirects(resposta, reverse("home:index"))
+        self.assertNotIn("usuario_id", self.client.session)

@@ -1,9 +1,14 @@
 
-from django.contrib.auth import authenticate, get_user_model, login as auth_login
+from django.contrib.auth import (
+    authenticate,
+    get_user_model,
+    login as auth_login,
+    logout as auth_logout,
+)
 from django.contrib.auth.hashers import check_password, make_password
 from django.shortcuts import redirect, render
 from django.utils.http import url_has_allowed_host_and_scheme
-from django.views.decorators.http import require_http_methods
+from django.views.decorators.http import require_http_methods, require_POST
 from uuid import uuid4
 
 from .forms import CadastroForm
@@ -70,6 +75,12 @@ def login_view(request):
     return render(request, "login.html", contexto)
 
 
+@require_POST
+def logout_view(request):
+    auth_logout(request)
+    return redirect("home:index")
+
+
 def cadastro_view(request):
     form = CadastroForm(request.POST or None)
 
@@ -78,10 +89,16 @@ def cadastro_view(request):
         email = form.cleaned_data["email"].strip().lower()
         senha = form.cleaned_data["senha"]
         email_key = f"usuario:email:{email}"
+        usuario_existente_id = redis_conn.get(email_key)
 
-        if redis_conn.exists(email_key):
+        if usuario_existente_id and redis_conn.exists(
+            f"usuario:{usuario_existente_id}"
+        ):
             form.add_error("email", "E-mail já cadastrado.")
         else:
+            if usuario_existente_id:
+                redis_conn.delete(email_key)
+
             usuario_id = str(uuid4())
             redis_conn.hset(
                 f"usuario:{usuario_id}",
@@ -110,3 +127,15 @@ def cadastro_view(request):
             "email": form.data.get("email", ""),
         },
     )
+    
+def perfil_view(request):
+    usuario_id = request.session.get("usuario_id")
+    if not usuario_id:
+        return redirect("usuarios:login")
+
+    usuario = redis_conn.hgetall(f"usuario:{usuario_id}")
+    if not usuario:
+        return redirect("usuarios:login")
+
+    return render(request, "perfil.html", {"usuario": usuario})
+

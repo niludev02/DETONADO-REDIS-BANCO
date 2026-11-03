@@ -31,15 +31,29 @@
                     <path d="m20 20-4-4"></path>
                 </svg>
             </button>
-            <a href="{% url 'usuarios:login' %}" aria-label="Entrar" title="Entrar"
-               class="inline-flex size-10 items-center justify-center rounded-md bg-primary text-primary-foreground transition hover:bg-primary/90">
-                <svg aria-hidden="true" focusable="false" class="size-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
-                    <path d="M13 4h6v16h-6"></path>
-                    <path d="m13 4-6 2v12l6 2"></path>
-                    <path d="M3 12h9"></path>
-                    <path d="m9 9 3 3-3 3"></path>
-                </svg>
-            </a>
+            {% if request.user.is_authenticated or request.session.usuario_id %}
+                {% if request.session.usuario_nome %}
+                    <span class="text-sm text-muted-foreground">{{ request.session.usuario_nome }}</span>
+                {% elif request.user.is_authenticated %}
+                    <span class="text-sm text-muted-foreground">{{ request.user.get_username }}</span>
+                {% endif %}
+                <form method="post" action="{% url 'usuarios:logout' %}">
+                    {% csrf_token %}
+                    <button type="submit" class="rounded-md bg-secondary px-3 py-2 text-sm text-secondary-foreground transition hover:bg-secondary/80">
+                        Sair
+                    </button>
+                </form>
+            {% else %}
+                <a href="{% url 'usuarios:login' %}" aria-label="Entrar" title="Entrar"
+                   class="inline-flex size-10 items-center justify-center rounded-md bg-primary text-primary-foreground transition hover:bg-primary/90">
+                    <svg aria-hidden="true" focusable="false" class="size-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+                        <path d="M13 4h6v16h-6"></path>
+                        <path d="m13 4-6 2v12l6 2"></path>
+                        <path d="M3 12h9"></path>
+                        <path d="m9 9 3 3-3 3"></path>
+                    </svg>
+                </a>
+            {% endif %}
         </div>
     </div>
 </header>

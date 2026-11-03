@@ -1,11 +1,27 @@
+{% load static %}
 <!DOCTYPE html>
 <html lang="en">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Document</title>
+     <link rel="stylesheet" href="{% static 'css/output.css' %}">
 </head>
-<body>
-    
+<body class="min-h=screen bg-background text-foreground">
+    <main class="relative isolate flex min-h-screen items-center justify-center overflow-hidden px-4 py-12 sm:px-6">
+        {% include "home/partials/header.html" %}
+        <main>
+            <nav>
+                <ul>
+                    <li>Perfil</li>
+                    <li>Privacidade e Segurança</li>
+                </ul>
+            </nav>
+            <div>
+                <h1>Perfil</h1>
+                <p>Informações do usuário...</p>
+            </div>
+            
+        </main>
+    </main>
 </body>
 </html>
