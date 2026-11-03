@@ -201,3 +201,24 @@ class CriarAdminRedisTests(TestCase):
         )
         pipeline.execute.assert_called_once()
         self.assertIn("Conta administradora criada", saida.getvalue())
+
+
+class PerfilTests(TestCase):
+    @patch("usuario.views.redis_conn")
+    def test_perfil_exibe_dados_da_conta_redis(self, redis):
+        sessao = self.client.session
+        sessao["usuario_id"] = "redis-user-id"
+        sessao.save()
+        redis.hgetall.return_value = {
+            "id": "redis-user-id",
+            "nome": "Jogadora Teste",
+            "email": "jogadora@example.com",
+            "is_admin": "1",
+        }
+
+        resposta = self.client.get(reverse("usuarios:perfil"))
+
+        self.assertEqual(resposta.status_code, 200)
+        self.assertContains(resposta, "Jogadora Teste")
+        self.assertContains(resposta, "jogadora@example.com")
+        self.assertContains(resposta, "Administrador")
