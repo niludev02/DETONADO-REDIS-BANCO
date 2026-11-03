@@ -1,7 +1,9 @@
 from django.test import TestCase
 from django.contrib.auth import get_user_model
-from django.contrib.auth.hashers import make_password
+from django.contrib.auth.hashers import check_password, make_password
+from django.core.management import call_command
 from django.urls import reverse
+from io import StringIO
 from unittest.mock import patch
 
 
@@ -132,6 +134,7 @@ class LoginTests(TestCase):
             "nome": "Jogador Redis",
             "email": "redis@example.com",
             "senha": make_password("senha-redis-segura"),
+            "is_admin": "1",
         }
 
         resposta = self.client.post(
@@ -144,6 +147,7 @@ class LoginTests(TestCase):
         self.assertEqual(
             self.client.session["usuario_nome"], "Jogador Redis"
         )
+        self.assertTrue(self.client.session["usuario_is_admin"])
 
     def test_logout_limpa_sessao_redis(self):
         sessao = self.client.session
@@ -155,3 +159,45 @@ class LoginTests(TestCase):
 
         self.assertRedirects(resposta, reverse("home:index"))
         self.assertNotIn("usuario_id", self.client.session)
+
+    def test_cabecalho_indica_usuario_admin_do_redis(self):
+        sessao = self.client.session
+        sessao["usuario_id"] = "redis-admin-id"
+        sessao["usuario_nome"] = "Admin Redis"
+        sessao["usuario_is_admin"] = True
+        sessao.save()
+
+        resposta = self.client.get(reverse("home:index"))
+
+        self.assertContains(resposta, "Administrador")
+
+
+class CriarAdminRedisTests(TestCase):
+    @patch(
+        "usuario.management.commands.criar_admin_redis.getpass.getpass",
+        side_effect=["UmaSenha-admin-987!", "UmaSenha-admin-987!"],
+    )
+    @patch("usuario.management.commands.criar_admin_redis.redis_conn")
+    def test_comando_cria_admin_com_senha_hash(self, redis, _getpass):
+        redis.get.return_value = None
+        pipeline = redis.pipeline.return_value.__enter__.return_value
+        saida = StringIO()
+
+        call_command(
+            "criar_admin_redis",
+            nome="Admin",
+            email="ADMIN@example.com",
+            stdout=saida,
+        )
+
+        dados = pipeline.hset.call_args.kwargs["mapping"]
+        self.assertEqual(dados["email"], "admin@example.com")
+        self.assertEqual(dados["is_admin"], "1")
+        self.assertTrue(
+            check_password("UmaSenha-admin-987!", dados["senha"])
+        )
+        pipeline.set.assert_called_once_with(
+            "usuario:email:admin@example.com", dados["id"]
+        )
+        pipeline.execute.assert_called_once()
+        self.assertIn("Conta administradora criada", saida.getvalue())

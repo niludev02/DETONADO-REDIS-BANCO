@@ -37,6 +37,9 @@
                 {% elif request.user.is_authenticated %}
                     <span class="text-sm text-muted-foreground">{{ request.user.get_username }}</span>
                 {% endif %}
+                {% if request.session.usuario_is_admin %}
+                    <span class="text-xs font-medium text-primary">Administrador</span>
+                {% endif %}
                 <form method="post" action="{% url 'usuarios:logout' %}">
                     {% csrf_token %}
                     <button type="submit" class="rounded-md bg-secondary px-3 py-2 text-sm text-secondary-foreground transition hover:bg-secondary/80">

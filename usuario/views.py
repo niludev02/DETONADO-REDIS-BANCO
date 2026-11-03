@@ -57,6 +57,7 @@ def login_view(request):
                 request.session["usuario_id"] = usuario_id
                 request.session["usuario_nome"] = usuario.get("nome", "")
                 request.session["usuario_email"] = usuario.get("email", email)
+                request.session["usuario_is_admin"] = usuario.get("is_admin") == "1"
                 autenticado = True
 
         if autenticado:
