@@ -6,12 +6,14 @@ from django.contrib.auth import (
     logout as auth_logout,
 )
 from django.contrib.auth.hashers import check_password, make_password
+from django.core.files.storage import default_storage
 from django.shortcuts import redirect, render
+from django.utils.text import slugify
 from django.utils.http import url_has_allowed_host_and_scheme
 from django.views.decorators.http import require_http_methods, require_POST
 from uuid import uuid4
 
-from .forms import CadastroForm
+from .forms import CadastroForm, PersonalizacaoPerfilForm
 from config.redis_conn import redis_conn
 
 
@@ -58,6 +60,10 @@ def login_view(request):
                 request.session["usuario_nome"] = usuario.get("nome", "")
                 request.session["usuario_email"] = usuario.get("email", email)
                 request.session["usuario_is_admin"] = usuario.get("is_admin") == "1"
+                foto_perfil = usuario.get("foto_perfil")
+                request.session["usuario_foto_perfil"] = (
+                    default_storage.url(foto_perfil) if foto_perfil else ""
+                )
                 autenticado = True
 
         if autenticado:
@@ -138,5 +144,58 @@ def perfil_view(request):
     if not usuario:
         return redirect("usuarios:login")
 
+    if usuario.get("foto_perfil"):
+        usuario["foto_perfil_url"] = default_storage.url(usuario["foto_perfil"])
+
     return render(request, "perfil.html", {"usuario": usuario})
 
+
+@require_http_methods(["GET", "POST"])
+def personalização_perfil(request):
+    usuario_id = request.session.get("usuario_id")
+    if not usuario_id:
+        return redirect("usuarios:login")
+
+    usuario = redis_conn.hgetall(f"usuario:{usuario_id}")
+    if not usuario:
+        return redirect("usuarios:login")
+
+    form = PersonalizacaoPerfilForm(
+        request.POST if request.method == "POST" else None,
+        request.FILES if request.method == "POST" else None,
+        initial={"nome": usuario.get("nome", "")},
+    )
+
+    if request.method == "POST" and form.is_valid():
+        foto = form.cleaned_data["foto"]
+        atualizacoes = {"nome": form.cleaned_data["nome"]}
+        nova_foto = None
+
+        if foto:
+            formato = getattr(getattr(foto, "image", None), "format", "") or ""
+            extensao = "".join(
+                caractere for caractere in formato.lower() if caractere.isalnum()
+            ) or "img"
+            nome_arquivo = slugify(form.cleaned_data["nome"]) or "usuario"
+            nova_foto = default_storage.save(
+                f"perfis/{usuario_id}/{nome_arquivo}-{usuario_id}-{uuid4().hex}.{extensao}",
+                foto,
+            )
+            atualizacoes["foto_perfil"] = nova_foto
+
+        redis_conn.hset(f"usuario:{usuario_id}", mapping=atualizacoes)
+        request.session["usuario_nome"] = atualizacoes["nome"]
+        if nova_foto:
+            request.session["usuario_foto_perfil"] = default_storage.url(nova_foto)
+
+        foto_anterior = usuario.get("foto_perfil")
+        if nova_foto and foto_anterior:
+            default_storage.delete(foto_anterior)
+
+        return redirect("usuarios:perfil")
+
+    return render(
+        request,
+        "configuracoes/perfil.html",
+        {"usuario": usuario, "form": form},
+    )

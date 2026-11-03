@@ -1,0 +1,53 @@
+{% load static %}
+<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="theme-color" content="#09090b">
+    <title>Personalizar perfil - DETONADO</title>
+    <link rel="stylesheet" href="{% static 'css/output.css' %}">
+</head>
+<body class="min-h-screen bg-background text-foreground">
+    {% include "home/partials/header.html" %}
+
+    <main class="mx-auto w-full max-w-3xl px-4 py-8 sm:px-6 lg:py-12">
+        <header class="mb-8 border-b border-border pb-6">
+            <a href="{% url 'usuarios:perfil' %}" class="text-sm font-medium text-primary hover:underline">
+                Voltar ao perfil
+            </a>
+            <h1 class="mt-3 text-3xl font-semibold tracking-tight">Personalizar perfil</h1>
+            <p class="mt-3 text-base leading-7 text-muted-foreground">
+                Altere o nome exibido na sua conta e sua foto de perfil.
+            </p>
+        </header>
+
+        <section aria-labelledby="titulo-personalizacao"
+                 class="rounded-lg border border-border bg-card p-6 sm:p-8">
+            <h2 id="titulo-personalizacao" class="text-xl font-semibold">Informações do perfil</h2>
+            <form method="post" enctype="multipart/form-data"
+                  action="{% url 'usuarios:personalização_perfil' %}" class="mt-6 space-y-5">
+                {% csrf_token %}
+                {% for campo in form %}
+                    <div class="space-y-2">
+                        <label for="{{ campo.id_for_label }}" class="text-sm font-medium">
+                            {{ campo.label }}
+                        </label>
+                        {{ campo }}
+                        {% for erro in campo.errors %}
+                            <p class="text-sm text-destructive" role="alert">{{ erro }}</p>
+                        {% endfor %}
+                    </div>
+                {% endfor %}
+                {% for erro in form.non_field_errors %}
+                    <p class="text-sm text-destructive" role="alert">{{ erro }}</p>
+                {% endfor %}
+                <button type="submit"
+                        class="inline-flex items-center justify-center rounded-md bg-primary px-5 py-3 text-base font-medium text-primary-foreground shadow transition-colors hover:bg-primary/90 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2">
+                    Salvar alterações
+                </button>
+            </form>
+        </section>
+    </main>
+</body>
+</html>

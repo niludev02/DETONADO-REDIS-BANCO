@@ -61,3 +61,35 @@ class CadastroForm(forms.Form):
             raise forms.ValidationError("As senhas não coincidem.")
 
         return dados
+
+class PersonalizacaoPerfilForm(forms.Form):
+    nome = forms.CharField(
+        max_length=100,
+        label="Nome",
+        widget=forms.TextInput(
+            attrs={
+                "autocomplete": "name",
+                "placeholder": "Como podemos te chamar?",
+            }
+        ),
+    )
+    foto = forms.ImageField(
+        label="Foto de perfil",
+        required=False,
+        widget=forms.ClearableFileInput(
+            attrs={
+                "accept": "image/*",
+            }
+        ),
+    )
+
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        for campo in self.fields.values():
+            campo.widget.attrs["class"] = (
+                "flex h-11 w-full rounded-md border border-input bg-background "
+                "px-3 py-2 text-sm text-foreground shadow-sm transition-colors "
+                "placeholder:text-muted-foreground focus-visible:outline-none "
+                "focus-visible:ring-1 focus-visible:ring-ring "
+                "disabled:cursor-not-allowed disabled:opacity-50"
+            )

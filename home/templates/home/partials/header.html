@@ -25,19 +25,18 @@
             </ul>
         </nav>
         <div class="flex items-center gap-2">
-            <button type="button" aria-label="Pesquisar" class="ml-2 inline-flex size-10 items-center justify-center rounded-md bg-secondary text-secondary-foreground">
-                <svg aria-hidden="true" focusable="false" class="size-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
-                    <circle cx="11" cy="11" r="7"></circle>
-                    <path d="m20 20-4-4"></path>
-                </svg>
-            </button>
             {% if request.user.is_authenticated or request.session.usuario_id %}
                 <a href="{% url 'usuarios:perfil' %}" aria-label="Perfil" title="Perfil"
-                   class="gap- inline-flex size-10 items-center justify-center rounded-md bg-secondary text-secondary-foreground transition hover:bg-secondary/80">
-                    <svg aria-hidden="true" focusable="false" class="size-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
-                        <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"></path>
-                        <circle cx="12" cy="7" r="4"></circle>
-                    </svg>
+                   class="inline-flex min-h-10 items-center gap-2 rounded-md px-3 py-2 text-secondary-foreground transition hover:bg-secondary/80">
+                    {% if request.session.usuario_foto_perfil %}
+                        <img src="{{ request.session.usuario_foto_perfil }}" alt=""
+                             class="size-8 shrink-0 rounded-full object-cover">
+                    {% else %}
+                        <svg aria-hidden="true" focusable="false" class="size-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+                            <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"></path>
+                            <circle cx="12" cy="7" r="4"></circle>
+                        </svg>
+                    {% endif %}
                     {% if request.session.usuario_nome %}
                     <span class="text-sm text-muted-foreground">{{ request.session.usuario_nome }}</span>
                     {% elif request.user.is_authenticated %}

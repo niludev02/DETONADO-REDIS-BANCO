@@ -1,9 +1,14 @@
+from io import BytesIO, StringIO
+from tempfile import TemporaryDirectory
+
+from PIL import Image
 from django.test import TestCase
 from django.contrib.auth import get_user_model
 from django.contrib.auth.hashers import check_password, make_password
 from django.core.management import call_command
+from django.core.files.storage import default_storage
+from django.core.files.uploadedfile import SimpleUploadedFile
 from django.urls import reverse
-from io import StringIO
 from unittest.mock import patch
 
 
@@ -222,3 +227,79 @@ class PerfilTests(TestCase):
         self.assertContains(resposta, "Jogadora Teste")
         self.assertContains(resposta, "jogadora@example.com")
         self.assertContains(resposta, "Administrador")
+
+
+class PersonalizacaoPerfilTests(TestCase):
+    def setUp(self):
+        sessao = self.client.session
+        sessao["usuario_id"] = "redis-user-id"
+        sessao.save()
+        self.usuario = {
+            "id": "redis-user-id",
+            "nome": "Jogadora Teste",
+            "email": "jogadora@example.com",
+        }
+        self.url = reverse("usuarios:personalização_perfil")
+
+    @patch("usuario.views.redis_conn")
+    def test_formulario_carrega_nome_atual(self, redis):
+        redis.hgetall.return_value = self.usuario
+
+        resposta = self.client.get(self.url)
+
+        self.assertEqual(resposta.status_code, 200)
+        self.assertEqual(resposta.context["form"].initial["nome"], "Jogadora Teste")
+
+    @patch("usuario.views.redis_conn")
+    def test_salva_nome_validado_e_atualiza_sessao(self, redis):
+        redis.hgetall.return_value = self.usuario
+
+        resposta = self.client.post(self.url, {"nome": "Novo nome"})
+
+        self.assertRedirects(resposta, reverse("usuarios:perfil"))
+        redis.hset.assert_called_once_with(
+            "usuario:redis-user-id",
+            mapping={"nome": "Novo nome"},
+        )
+        self.assertEqual(self.client.session["usuario_nome"], "Novo nome")
+
+    @patch("usuario.views.redis_conn")
+    def test_salva_foto_enviada(self, redis):
+        redis.hgetall.return_value = self.usuario
+        imagem = BytesIO()
+        Image.new("RGB", (1, 1), color="red").save(imagem, format="PNG")
+
+        with TemporaryDirectory() as media_root:
+            with self.settings(MEDIA_ROOT=media_root):
+                resposta = self.client.post(
+                    self.url,
+                    {
+                        "nome": "Jogadora Teste",
+                        "foto": SimpleUploadedFile(
+                            "foto.png",
+                            imagem.getvalue(),
+                            content_type="image/png",
+                        ),
+                    },
+                )
+
+                self.assertRedirects(resposta, reverse("usuarios:perfil"))
+                caminho_foto = redis.hset.call_args.kwargs["mapping"]["foto_perfil"]
+                self.assertTrue(default_storage.exists(caminho_foto))
+                self.assertIn("jogadora-teste-redis-user-id-", caminho_foto)
+                self.assertEqual(
+                    self.client.session["usuario_foto_perfil"],
+                    default_storage.url(caminho_foto),
+                )
+
+    def test_cabecalho_exibe_foto_com_tamanho_fixo(self):
+        sessao = self.client.session
+        sessao["usuario_foto_perfil"] = "/media/perfis/redis-user-id/foto.png"
+        sessao["usuario_nome"] = "Jogadora Teste"
+        sessao.save()
+
+        resposta = self.client.get(reverse("home:index"))
+
+        self.assertContains(resposta, 'src="/media/perfis/redis-user-id/foto.png"')
+        self.assertContains(resposta, "size-8 shrink-0 rounded-full object-cover")
+        self.assertContains(resposta, "Jogadora Teste")

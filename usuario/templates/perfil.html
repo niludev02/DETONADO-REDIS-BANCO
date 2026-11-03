@@ -13,22 +13,26 @@
 
     <main class="mx-auto w-full max-w-6xl px-4 py-8 sm:px-6 lg:py-12">
         <header class="mb-8 border-b border-border pb-6">
-            <p class="text-sm font-medium text-primary">Sua conta</p>
+            <p class="text-base font-medium text-primary">Sua conta</p>
             <h1 class="mt-2 text-3xl font-semibold tracking-tight">Perfil</h1>
-            <p class="mt-2 max-w-2xl text-sm text-muted-foreground">
+            <p class="mt-3 max-w-2xl text-base leading-7 text-muted-foreground">
                 Confira as informações associadas à sua conta DETONADO.
             </p>
         </header>
 
         <div class="grid gap-8 md:grid-cols-[220px_minmax(0,1fr)]">
             <aside>
-                <nav aria-label="Navegação do perfil" class="flex gap-2 md:flex-col">
+                <nav aria-label="Navegação do perfil" class="flex gap-3 md:flex-col">
                     <a href="#dados-da-conta" aria-current="page"
-                       class="rounded-md bg-secondary px-3 py-2 text-sm font-medium text-secondary-foreground">
+                       class="rounded-md bg-secondary px-4 py-3 text-base font-medium text-secondary-foreground">
                         Dados da conta
                     </a>
+                    <a href="{% url 'usuarios:personalização_perfil' %}"
+                       class="rounded-md px-4 py-3 text-base text-muted-foreground transition hover:bg-secondary hover:text-secondary-foreground">
+                        Personalização
+                    </a>
                     <a href="#seguranca"
-                       class="rounded-md px-3 py-2 text-sm text-muted-foreground transition hover:bg-secondary hover:text-secondary-foreground">
+                       class="rounded-md px-4 py-3 text-base text-muted-foreground transition hover:bg-secondary hover:text-secondary-foreground">
                         Segurança
                     </a>
                 </nav>
@@ -36,53 +40,59 @@
 
             <div class="space-y-6">
                 <section id="dados-da-conta" aria-labelledby="titulo-dados"
-                         class="rounded-lg border border-border bg-card p-5 sm:p-7">
-                    <div class="flex flex-wrap items-center gap-4 border-b border-border pb-6 p-6">
-                        <div aria-hidden="true"
-                             class="flex size-14 shrink-0 items-center justify-center rounded-full bg-primary/15 text-xl font-semibold text-primary">
-                            {{ usuario.nome|first|upper }}
-                        </div>
+                         class="rounded-lg border border-border bg-card p-6 sm:p-8">
+                    <div class="flex flex-wrap items-center gap-5 border-b border-border pb-7">
+                        {% if usuario.foto_perfil_url %}
+                            <img src="{{ usuario.foto_perfil_url }}"
+                                 alt="Foto de perfil de {{ usuario.nome }}"
+                                 class="size-16 shrink-0 rounded-full object-cover">
+                        {% else %}
+                            <div aria-hidden="true"
+                                 class="flex size-16 shrink-0 items-center justify-center rounded-full bg-primary/15 text-2xl font-semibold text-primary">
+                                {{ usuario.nome|default:"U"|first|upper }}
+                            </div>
+                        {% endif %}
                         <div class="min-w-0 flex-1">
-                            <h2 id="titulo-dados" class="truncate text-xl font-semibold">
+                            <h2 id="titulo-dados" class="truncate text-2xl font-semibold">
                                 {{ usuario.nome|default:"Usuário" }}
                             </h2>
-                            <p class="mt-1 break-all text-sm text-muted-foreground">
+                            <p class="mt-2 break-all text-base text-muted-foreground">
                                 {{ usuario.email }}
                             </p>
                         </div>
                         {% if usuario.is_admin == "1" %}
-                            <span class="rounded-md border border-primary/30 bg-primary/10 px-2.5 py-1 text-xs font-medium text-primary p-4">
+                            <span class="rounded-md border border-primary/30 bg-primary/10 px-3 py-2 text-sm font-medium text-primary">
                                 Administrador
                             </span>
                         {% else %}
-                            <span class="rounded-md border border-border px-2.5 py-1 text-xs font-medium text-muted-foreground">
+                            <span class="rounded-md border border-border px-3 py-2 text-sm font-medium text-muted-foreground">
                                 Membro
                             </span>
                         {% endif %}
                     </div>
 
-                    <dl class="inline-flex items-center space-x-2">
-                        <div>
-                            <dt class="text-xs font-medium uppercase text-muted-foreground">Nome</dt>
-                            <dd class="mt-1 break-words text-sm">{{ usuario.nome|default:"Não informado" }}</dd>
+                    <dl class="mt-7 grid gap-5 sm:grid-cols-2">
+                        <div class="rounded-md border border-border bg-background p-4">
+                            <dt class="text-sm font-medium uppercase tracking-wide text-muted-foreground">Nome</dt>
+                            <dd class="mt-2 break-words text-base font-medium">{{ usuario.nome|default:"Não informado" }}</dd>
                         </div>
-                        <div>
-                            <dt class="text-xs font-medium uppercase text-muted-foreground">E-mail</dt>
-                            <dd class="mt-1 break-all text-sm">{{ usuario.email|default:"Não informado" }}</dd>
+                        <div class="rounded-md border border-border bg-background p-4">
+                            <dt class="text-sm font-medium uppercase tracking-wide text-muted-foreground">E-mail</dt>
+                            <dd class="mt-2 break-all text-base font-medium">{{ usuario.email|default:"Não informado" }}</dd>
                         </div>
                     </dl>
                 </section>
 
                 <section id="seguranca" aria-labelledby="titulo-seguranca"
-                         class="rounded-lg border border-border bg-card p-5 sm:p-7 p-6">
-                    <h2 id="titulo-seguranca" class="text-lg font-semibold">Segurança</h2>
-                    <p class="mt-2 max-w-2xl text-sm leading-6 text-muted-foreground">
+                         class="rounded-lg border border-border bg-card p-6 sm:p-8">
+                    <h2 id="titulo-seguranca" class="text-xl font-semibold">Segurança</h2>
+                    <p class="mt-3 max-w-2xl text-base leading-7 text-muted-foreground">
                         Sua senha é armazenada de forma protegida. Encerre a sessão ao usar um dispositivo compartilhado.
                     </p>
-                    <form method="post" action="{% url 'usuarios:logout' %}" class="mt-5">
+                    <form method="post" action="{% url 'usuarios:logout' %}" class="mt-6">
                         {% csrf_token %}
                         <button type="submit"
-                                class="rounded-md border border-border px-4 py-2 text-sm font-medium transition hover:bg-secondary">
+                                class="rounded-md border border-border px-5 py-3 text-base font-medium transition hover:bg-secondary">
                             Sair da conta
                         </button>
                     </form>
