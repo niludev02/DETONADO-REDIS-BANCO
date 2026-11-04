@@ -1,0 +1,43 @@
+{% extends "base.html" %}
+
+{% block title %} {{ jogo.titulo }} {% endblock %}
+
+{% block content %}
+<main class="mx-auto max-w-6xl space-y-6 p-6">
+    <section class="flex flex-col gap-4 md:flex-row">
+        <div class="md:w-1/2">
+            {% if jogo.imagem_url %}
+                <img src="{{ jogo.imagem_url }}" alt="{{ jogo.titulo }}" class="aspect-video w-full rounded-md object-cover">
+            {% endif %}
+        </div>
+        <div class="md:w-1/2">
+            <h1 class="text-2xl font-semibold">{{ jogo.titulo }}</h1>
+            <p class="mt-2 text-base text-muted-foreground">
+                {{ jogo.descricao }}
+            </p>
+            <div class="mt-4 space-y-2">
+                <p class="text-sm text-muted-foreground">
+                    <span class="font-semibold">Gênero:</span> {{ jogo.genero }}
+                </p>
+                <p class="text-sm text-muted-foreground">
+                    <span class="font-semibold">Plataformas:</span> {{ jogo.plataformas }}
+                </p>
+                <p class="text-sm text-muted-foreground">
+                    <span class="font-semibold">Desenvolvedora:</span> {{ jogo.desenvolvedora }}
+                </p>
+                <p class="text-sm text-muted-foreground">
+                    <span class="font-semibold">Distribuidora:</span> {{ jogo.distribuidora }}
+                </p>
+                <p class="text-sm text-muted-foreground">
+                    <span class="font-semibold">Data de lançamento:</span> {{ jogo.data_lancamento }}
+                </p>
+            </div>
+        </div>
+    </section>
+    <section>
+        /* Lista de detonados ou guias relacionados ao jogo */
+        
+    </section>
+
+</main>
+{% endblock %}

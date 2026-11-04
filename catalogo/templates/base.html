@@ -4,20 +4,13 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Detonado</title>
+    <title>{% block title %}{% endblock %} - Detonado</title>
     <link rel="stylesheet" href="{% static 'css/output.css' %}">
 </head>
 <body class="min-h-screen bg-background text-foreground">
-    {% include "partials/header.html" %}
+    {% include "home/partials/header.html" %}
 
-    <main class="mx-auto max-w-4xl space-y-4 p-6">
-    <section class="rounded-lg border border-border bg-card p-6">
-        <h1 class="text-xl font-semibold">Explore seus jogos</h1>
-        <p class="mt-2 text-muted-foreground">Guias e conhecimento da comunidade.</p>
-        <button class="mt-4 rounded-md bg-primary px-4 py-2 text-primary-foreground">
-            Ver jogos
-        </button>
-    </section>
-</main>
+    {% block content %}
+    {% endblock %}
 </body>
 </html>

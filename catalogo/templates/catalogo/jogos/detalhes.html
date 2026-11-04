@@ -1,0 +1,91 @@
+{% extends "base.html" %}
+
+{% block title %}{{ jogo.titulo }}{% endblock %}
+
+{% block content %}
+<main class="mx-auto max-w-5xl space-y-6 px-4 py-8 sm:px-6 lg:py-12">
+    <a href="{% url 'catalogo:index' %}"
+       class="inline-flex items-center gap-2 rounded-full border border-border bg-card px-4 py-2 text-sm font-medium text-muted-foreground transition hover:border-primary/50 hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring">
+        <svg aria-hidden="true" class="size-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <path d="m15 18-6-6 6-6"></path>
+        </svg>
+        Voltar aos jogos
+    </a>
+
+    {% if pode_editar_jogo %}
+        <a href="{% url 'catalogo:editar' jogo.id %}"
+           class="inline-flex items-center gap-2 rounded-md bg-primary px-4 py-2 text-sm font-medium text-primary-foreground transition hover:bg-primary/90">
+            Editar jogo
+        </a>
+    {% endif %}
+
+    <article class="overflow-hidden rounded-2xl border border-border bg-card shadow-xl shadow-black/20">
+        <header class="relative isolate flex min-h-72 items-end overflow-hidden bg-gradient-to-br from-primary/30 via-card to-background sm:min-h-96">
+            {% if jogo.imagem_url %}
+                <img src="{{ jogo.imagem_url }}" alt=""
+                     class="absolute inset-0 -z-20 size-full object-cover">
+                <div aria-hidden="true" class="absolute inset-0 -z-10 bg-gradient-to-t from-background via-background/75 to-background/10"></div>
+            {% else %}
+                <div aria-hidden="true" class="absolute inset-0 -z-10 bg-gradient-to-t from-background via-background/60 to-transparent"></div>
+            {% endif %}
+
+            <div class="w-full space-y-4 p-6 sm:p-10">
+                <div class="flex flex-wrap items-center gap-2">
+                    {% if jogo.genero %}
+                        <span class="rounded-full border border-primary/30 bg-primary/15 px-3 py-1 text-xs font-semibold text-primary">
+                            {{ jogo.genero }}
+                        </span>
+                    {% endif %}
+                    {% if jogo.status %}
+                        <span class="rounded-full border border-border bg-background/70 px-3 py-1 text-xs font-medium text-foreground">
+                            {{ jogo.status|title }}
+                        </span>
+                    {% endif %}
+                </div>
+                <h1 class="max-w-3xl text-4xl font-bold tracking-tight drop-shadow sm:text-5xl">
+                    {{ jogo.titulo }}
+                </h1>
+                {% if jogo.plataformas %}
+                    <p class="flex items-center gap-2 text-sm text-foreground/80 sm:text-base">
+                        <svg aria-hidden="true" class="size-5 shrink-0" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+                            <rect x="3" y="4" width="18" height="13" rx="2"></rect>
+                            <path d="M8 21h8m-4-4v4"></path>
+                        </svg>
+                        {{ jogo.plataformas }}
+                    </p>
+                {% endif %}
+            </div>
+        </header>
+
+        <div class="grid gap-8 p-6 sm:p-10 lg:grid-cols-[minmax(0,1fr)_280px]">
+            <section aria-labelledby="sobre-jogo">
+                <h2 id="sobre-jogo" class="text-xl font-semibold">Sobre o jogo</h2>
+                <p class="mt-4 whitespace-pre-line text-base leading-7 text-muted-foreground">
+                    {{ jogo.descricao|default:"Nenhuma descrição disponível." }}
+                </p>
+            </section>
+
+            <aside aria-labelledby="informacoes-jogo"
+                   class="rounded-xl border border-border bg-background/70 p-5">
+                <h2 id="informacoes-jogo" class="text-sm font-semibold uppercase tracking-wide text-muted-foreground">
+                    Informações
+                </h2>
+                <dl class="mt-4 divide-y divide-border">
+                    <div class="py-3 first:pt-0">
+                        <dt class="text-xs text-muted-foreground">Desenvolvedora</dt>
+                        <dd class="mt-1 font-medium">{{ jogo.desenvolvedora|default:"Não informada" }}</dd>
+                    </div>
+                    <div class="py-3">
+                        <dt class="text-xs text-muted-foreground">Distribuidora</dt>
+                        <dd class="mt-1 font-medium">{{ jogo.distribuidora|default:"Não informada" }}</dd>
+                    </div>
+                    <div class="py-3 last:pb-0">
+                        <dt class="text-xs text-muted-foreground">Data de lançamento</dt>
+                        <dd class="mt-1 font-medium">{{ jogo.data_lancamento|default:"Não informada" }}</dd>
+                    </div>
+                </dl>
+            </aside>
+        </div>
+    </article>
+</main>
+{% endblock %}

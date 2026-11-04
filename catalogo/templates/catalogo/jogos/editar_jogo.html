@@ -1,0 +1,54 @@
+{% extends "base.html" %}
+
+{% block title %} Editando {{ jogo.titulo }} {% endblock %}
+
+{% block content %}
+<main class="mx-auto max-w-3xl space-y-6 p-6">
+	<header>
+		<a href="{% url 'catalogo:detalhes' jogo.id %}" class="text-sm font-medium text-primary hover:underline">
+			Voltar aos detalhes
+		</a>
+		<h1 class="mt-3 text-3xl font-semibold">Editar jogo</h1>
+		<p class="mt-2 text-base text-muted-foreground">Atualize as informações de {{ jogo.titulo }}.</p>
+	</header>
+
+	<section class="rounded-lg border border-border bg-card p-6">
+		<form method="post" enctype="multipart/form-data"
+			  action="{% url 'catalogo:editar' jogo.id %}" class="grid gap-5 sm:grid-cols-2">
+			{% csrf_token %}
+			{% for campo in form_jogo %}
+				<div class="space-y-2 {% if campo.name == 'descricao' or campo.name == 'plataformas' %}sm:col-span-2{% endif %}">
+					<label for="{{ campo.id_for_label }}" class="text-sm font-medium">
+						{{ campo.label }}
+					</label>
+					{{ campo }}
+					{% if campo.name == 'imagem' and jogo.imagem_url %}
+						<img src="{{ jogo.imagem_url }}" alt="Capa atual de {{ jogo.titulo }}"
+							 class="mt-2 aspect-video max-h-48 rounded-md border border-border object-cover">
+						<p class="text-xs text-muted-foreground">Selecione um arquivo apenas para substituir a capa atual.</p>
+					{% endif %}
+					{% if campo.help_text %}
+						<p class="text-xs text-muted-foreground">{{ campo.help_text }}</p>
+					{% endif %}
+					{% for erro in campo.errors %}
+						<p class="text-sm text-destructive" role="alert">{{ erro }}</p>
+					{% endfor %}
+				</div>
+			{% endfor %}
+			{% for erro in form_jogo.non_field_errors %}
+				<p class="text-sm text-destructive sm:col-span-2" role="alert">{{ erro }}</p>
+			{% endfor %}
+			<div class="flex flex-wrap gap-3 sm:col-span-2">
+				<button type="submit"
+						class="rounded-md bg-primary px-4 py-2 text-sm font-medium text-primary-foreground transition hover:bg-primary/90">
+					Salvar alterações
+				</button>
+				<a href="{% url 'catalogo:detalhes' jogo.id %}"
+				   class="rounded-md border border-border px-4 py-2 text-sm font-medium transition hover:bg-secondary">
+					Cancelar
+				</a>
+			</div>
+		</form>
+	</section>
+</main>
+{% endblock %}
