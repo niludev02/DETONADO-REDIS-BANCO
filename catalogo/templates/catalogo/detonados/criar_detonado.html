@@ -1,0 +1,139 @@
+{% extends "base.html" %}
+
+{% block title %}Cadastrar detonado{% endblock %}
+
+{% block content %}
+<main class="mx-auto max-w-3xl space-y-6 p-6">
+    <header>
+        <a href="{% url 'catalogo:detonados' %}" class="text-sm font-medium text-primary hover:underline">
+            Voltar ao catálogo
+        </a>
+        <h1 class="mt-3 text-3xl font-semibold">Cadastrar detonado</h1>
+        <p class="mt-2 text-base text-muted-foreground">
+            Preencha as informações do detonado para adicioná-lo ao catálogo.
+        </p>
+    </header>
+
+    <section class="rounded-lg border border-border bg-card p-6">
+        <form method="post" enctype="multipart/form-data"
+              action="{% url 'catalogo:criar_detonado' jogo.id %}" class="grid gap-5 sm:grid-cols-2">
+            {% csrf_token %}
+            {% for campo in form_detonado %}
+                <div class="space-y-2 {% if campo.name == 'conteudo' %}sm:col-span-2{% endif %}">
+                    <label for="{{ campo.id_for_label }}" class="text-sm font-medium">
+                        {{ campo.label }}
+                    </label>
+                    {{ campo }}
+                    {% if campo.help_text %}
+                        <p class="text-xs text-muted-foreground">{{ campo.help_text }}</p>
+                    {% endif %}
+                    {% for erro in campo.errors %}
+                        <p class="text-sm text-destructive" role="alert">{{ erro }}</p>
+                    {% endfor %}
+                </div>
+            {% endfor %}
+            {% for erro in form_detonado.non_field_errors %}
+                <p class="text-sm text-destructive sm:col-span-2" role="alert">{{ erro }}</p>
+            {% endfor %}
+
+            <section aria-labelledby="etapas-heading" class="space-y-4 sm:col-span-2">
+                <div class="flex flex-wrap items-center justify-between gap-3">
+                    <div>
+                        <h2 id="etapas-heading" class="text-lg font-semibold">Etapas do detonado</h2>
+                        <p class="mt-1 text-sm text-muted-foreground">
+                            Adicione o título e a descrição de cada etapa.
+                        </p>
+                    </div>
+                    <button id="adicionar-etapa" type="button"
+                            class="rounded-md border border-border px-4 py-2 text-sm font-medium transition hover:bg-secondary">
+                        Adicionar etapa
+                    </button>
+                </div>
+
+                {% for erro in erros_etapas %}
+                    <p class="text-sm text-destructive" role="alert">{{ erro }}</p>
+                {% endfor %}
+
+                <div id="lista-etapas" class="space-y-4">
+                    {% for etapa in etapas_form %}
+                        <fieldset class="space-y-3 rounded-lg border border-border p-4">
+                            <legend class="px-1 text-sm font-medium">Etapa {{ forloop.counter }}</legend>
+                            <div class="space-y-2">
+                                <label for="etapa-titulo-{{ forloop.counter0 }}" class="text-sm font-medium">
+                                    Título da etapa
+                                </label>
+                                <input id="etapa-titulo-{{ forloop.counter0 }}" name="etapa_titulo"
+                                       type="text" maxlength="150" value="{{ etapa.titulo }}"
+                                       placeholder="Ex.: Fase 1 — A floresta"
+                                       class="w-full rounded-md border border-input bg-background px-3 py-2 text-sm text-foreground shadow-sm placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring">
+                            </div>
+                            <div class="space-y-2">
+                                <label for="etapa-descricao-{{ forloop.counter0 }}" class="text-sm font-medium">
+                                    Descrição da etapa
+                                </label>
+                                <textarea id="etapa-descricao-{{ forloop.counter0 }}" name="etapa_descricao"
+                                          rows="4" placeholder="Descreva como concluir esta etapa."
+                                          class="w-full rounded-md border border-input bg-background px-3 py-2 text-sm text-foreground shadow-sm placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring">{{ etapa.descricao }}</textarea>
+                            </div>
+                            {% if etapa.erro %}
+                                <p class="text-sm text-destructive" role="alert">{{ etapa.erro }}</p>
+                            {% endif %}
+                        </fieldset>
+                    {% endfor %}
+                </div>
+            </section>
+
+            <div class="flex flex-wrap gap-3 sm:col-span-2">
+                <button type="submit"
+                        class="rounded-md bg-primary px-4 py-2 text-sm font-medium text-primary-foreground transition hover:bg-primary/90">
+                    Salvar detonado
+                </button>
+                <a href="{% url 'catalogo:index' %}"
+                   class="rounded-md border border-border px-4 py-2 text-sm font-medium transition hover:bg-secondary">
+                    Cancelar
+                </a>
+            </div>
+        </form>
+    </section>
+</main>
+
+<template id="modelo-etapa">
+    <fieldset class="space-y-3 rounded-lg border border-border p-4">
+        <legend class="px-1 text-sm font-medium">Nova etapa</legend>
+        <div class="space-y-2">
+            <label class="text-sm font-medium" data-label="titulo">Título da etapa</label>
+            <input name="etapa_titulo" type="text" maxlength="150"
+                   placeholder="Ex.: Fase 1 — A floresta"
+                   class="w-full rounded-md border border-input bg-background px-3 py-2 text-sm text-foreground shadow-sm placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring">
+        </div>
+        <div class="space-y-2">
+            <label class="text-sm font-medium" data-label="descricao">Descrição da etapa</label>
+            <textarea name="etapa_descricao" rows="4"
+                      placeholder="Descreva como concluir esta etapa."
+                      class="w-full rounded-md border border-input bg-background px-3 py-2 text-sm text-foreground shadow-sm placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"></textarea>
+        </div>
+    </fieldset>
+</template>
+
+<script>
+    const listaEtapas = document.getElementById("lista-etapas");
+    const modeloEtapa = document.getElementById("modelo-etapa");
+    const botaoAdicionarEtapa = document.getElementById("adicionar-etapa");
+
+    botaoAdicionarEtapa.addEventListener("click", () => {
+        const indice = listaEtapas.children.length;
+        const novaEtapa = modeloEtapa.content.cloneNode(true);
+        const fieldset = novaEtapa.querySelector("fieldset");
+        const titulo = novaEtapa.querySelector('input[name="etapa_titulo"]');
+        const descricao = novaEtapa.querySelector('textarea[name="etapa_descricao"]');
+
+        fieldset.querySelector("legend").textContent = `Etapa ${indice + 1}`;
+        titulo.id = `etapa-titulo-${indice}`;
+        descricao.id = `etapa-descricao-${indice}`;
+        fieldset.querySelector('[data-label="titulo"]').htmlFor = titulo.id;
+        fieldset.querySelector('[data-label="descricao"]').htmlFor = descricao.id;
+        listaEtapas.appendChild(novaEtapa);
+        titulo.focus();
+    });
+</script>
+{% endblock %}

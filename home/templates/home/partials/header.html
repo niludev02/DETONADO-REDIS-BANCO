@@ -8,20 +8,25 @@
             <ul class="flex gap-4">
                 <li>
                     <a href="{% url 'home:index' %}"
-                       class="{% if request.resolver_match.namespace == 'home' %}font-medium text-primary{% else %}text-muted-foreground hover:text-foreground{% endif %}"
-                       {% if request.resolver_match.namespace == 'home' %}aria-current="page"{% endif %}>
+                       class="{% if request.resolver_match.url_name == 'index' and request.resolver_match.namespace == 'home' %}font-medium text-primary{% else %}text-muted-foreground transition-colors hover:text-foreground{% endif %}"
+                       {% if request.resolver_match.url_name == 'index' and request.resolver_match.namespace == 'home' %}aria-current="page"{% endif %}>
                         Início
                     </a>
                 </li>
                 <li>
                     <a href="{% url 'catalogo:index' %}"
-                       class="{% if request.resolver_match.namespace == 'catalogo' %}font-medium text-primary{% else %}text-muted-foreground hover:text-foreground{% endif %}"
-                       {% if request.resolver_match.namespace == 'catalogo' %}aria-current="page"{% endif %}>
+                       class="{% if request.resolver_match.namespace == 'catalogo' and request.resolver_match.url_name != 'detonados' and request.resolver_match.url_name != 'detalhes_detonado' and request.resolver_match.url_name != 'criar_detonado' and request.resolver_match.url_name != 'editar_detonado' %}font-medium text-primary{% else %}text-muted-foreground transition-colors hover:text-foreground{% endif %}"
+                       {% if request.resolver_match.namespace == 'catalogo' and request.resolver_match.url_name != 'detonados' and request.resolver_match.url_name != 'detalhes_detonado' and request.resolver_match.url_name != 'criar_detonado' and request.resolver_match.url_name != 'editar_detonado' %}aria-current="page"{% endif %}>
                         Jogos
                     </a>
                 </li>
-                <li><span class="text-muted-foreground">Guias</span></li>
-                <li><span class="text-muted-foreground">Comunidade</span></li>
+                <li>
+                    <a href="{% url 'catalogo:detonados' %}"
+                       class="{% if request.resolver_match.url_name == 'detonados' or request.resolver_match.url_name == 'detalhes_detonado' or request.resolver_match.url_name == 'criar_detonado' or request.resolver_match.url_name == 'editar_detonado' %}font-medium text-primary{% else %}text-muted-foreground transition-colors hover:text-foreground{% endif %}"
+                       {% if request.resolver_match.url_name == 'detonados' or request.resolver_match.url_name == 'detalhes_detonado' or request.resolver_match.url_name == 'criar_detonado' or request.resolver_match.url_name == 'editar_detonado' %}aria-current="page"{% endif %}>
+                        Detonados
+                    </a>
+                </li>
             </ul>
         </nav>
         <div class="flex items-center gap-2">

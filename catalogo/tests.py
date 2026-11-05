@@ -11,6 +11,24 @@ from django.urls import reverse
 
 class CriarJogoTests(TestCase):
     @patch("catalogo.views.redis_conn")
+    def test_catalogo_ignora_chaves_auxiliares_de_detonados(self, redis):
+        redis.scan_iter.return_value = [
+            "jogo:game-123",
+            "jogo:game-123:detonados",
+        ]
+        redis.hgetall.return_value = {
+            "id": "game-123",
+            "titulo": "Jogo de teste",
+            "descricao": "Descrição",
+            "imagem": "",
+        }
+
+        resposta = self.client.get(reverse("catalogo:index"))
+
+        self.assertEqual(resposta.status_code, 200)
+        redis.hgetall.assert_called_once_with("jogo:game-123")
+
+    @patch("catalogo.views.redis_conn")
     def test_card_do_catalogo_abre_detalhes_do_jogo(self, redis):
         redis.scan_iter.return_value = ["jogo:game-123"]
         redis.hgetall.return_value = {
@@ -250,3 +268,242 @@ class CriarJogoTests(TestCase):
 
         self.assertEqual(resposta.status_code, 403)
         redis.scan_iter.assert_not_called()
+
+
+class DetonadosTests(TestCase):
+    @patch("catalogo.views.redis_conn")
+    def test_formulario_de_detonado_exibe_campos(self, redis):
+        redis.hgetall.return_value = {"id": "game-123", "titulo": "Jogo de teste"}
+
+        resposta = self.client.get(
+            reverse("catalogo:criar_detonado", args=["game-123"])
+        )
+
+        self.assertEqual(resposta.status_code, 200)
+        self.assertContains(resposta, 'name="titulo"')
+        self.assertContains(resposta, 'name="conteudo"')
+        self.assertContains(resposta, 'name="detonado_img"')
+        self.assertContains(resposta, 'name="etapa_titulo"')
+        self.assertContains(resposta, 'name="etapa_descricao"')
+        self.assertContains(resposta, "Adicionar etapa")
+
+    @patch("catalogo.models.redis_conn")
+    @patch("catalogo.views.redis_conn")
+    def test_formulario_valido_salva_detonado_e_redireciona(
+        self,
+        redis_views,
+        redis_model,
+    ):
+        redis_views.hgetall.return_value = {"id": "game-123", "titulo": "Jogo de teste"}
+        conteudo_imagem = BytesIO()
+        Image.new("RGB", (1, 1), color="red").save(conteudo_imagem, format="PNG")
+
+        with TemporaryDirectory() as media_root:
+            with self.settings(MEDIA_ROOT=media_root):
+                resposta = self.client.post(
+                    reverse("catalogo:criar_detonado", args=["game-123"]),
+                    {
+                        "titulo": "Guia de teste",
+                        "conteudo": "Passo a passo",
+                        "etapa_titulo": ["Primeira fase", "Chefe final"],
+                        "etapa_descricao": [
+                            "Atravesse a floresta.",
+                            "Derrote o chefe.",
+                        ],
+                        "detonado_img": SimpleUploadedFile(
+                            "guia.png",
+                            conteudo_imagem.getvalue(),
+                            content_type="image/png",
+                        ),
+                    },
+                )
+
+                self.assertRedirects(
+                    resposta,
+                    reverse(
+                        "catalogo:detalhes_detonado",
+                        args=[
+                            redis_model.hset.call_args_list[0]
+                            .args[0]
+                            .split(":", 1)[1]
+                        ],
+                    ),
+                )
+
+                detonado_mapping = redis_model.hset.call_args_list[0].kwargs["mapping"]
+                etapa_mapping = [
+                    chamada.kwargs["mapping"]
+                    for chamada in redis_model.hset.call_args_list[1:]
+                ]
+                self.assertEqual(detonado_mapping["titulo"], "Guia de teste")
+                self.assertEqual(detonado_mapping["conteudo"], "Passo a passo")
+                self.assertTrue(
+                    detonado_mapping["detonado_img"].startswith("detonados/")
+                )
+                self.assertEqual(
+                    [etapa["titulo"] for etapa in etapa_mapping],
+                    ["Primeira fase", "Chefe final"],
+                )
+                self.assertEqual(
+                    [etapa["descricao"] for etapa in etapa_mapping],
+                    ["Atravesse a floresta.", "Derrote o chefe."],
+                )
+                redis_views.sadd.assert_any_call(
+                    "jogo:game-123:detonados",
+                    detonado_mapping["id"],
+                )
+                self.assertEqual(redis_views.sadd.call_count, 1)
+                self.assertEqual(
+                    [chamada.args for chamada in redis_views.rpush.call_args_list],
+                    [
+                        (
+                            f"detonado:{detonado_mapping['id']}:etapas",
+                            etapa_mapping[0]["id"],
+                        ),
+                        (
+                            f"detonado:{detonado_mapping['id']}:etapas",
+                            etapa_mapping[1]["id"],
+                        ),
+                    ],
+                )
+
+    @patch("catalogo.views.redis_conn")
+    def test_detalhes_exibe_etapas_na_ordem_salva(self, redis):
+        redis.hgetall.side_effect = [
+            {
+                "id": "guide-123",
+                "titulo": "Guia de teste",
+                "conteudo": "Introdução",
+            },
+            {"titulo": "Primeira fase", "descricao": "Explore a floresta."},
+            {"titulo": "Chefe final", "descricao": "Derrote o chefe."},
+        ]
+        redis.lrange.return_value = ["stage-1", "stage-2"]
+
+        resposta = self.client.get(
+            reverse("catalogo:detalhes_detonado", args=["guide-123"])
+        )
+
+        self.assertEqual(resposta.status_code, 200)
+        self.assertLess(
+            resposta.content.index(b"Primeira fase"),
+            resposta.content.index(b"Chefe final"),
+        )
+
+    @patch("catalogo.models.redis_conn")
+    @patch("catalogo.views.redis_conn")
+    def test_etapa_incompleta_nao_salva_detonado(
+        self,
+        redis_views,
+        redis_model,
+    ):
+        redis_views.hgetall.return_value = {"id": "game-123", "titulo": "Jogo de teste"}
+        conteudo_imagem = BytesIO()
+        Image.new("RGB", (1, 1), color="red").save(conteudo_imagem, format="PNG")
+
+        resposta = self.client.post(
+            reverse("catalogo:criar_detonado", args=["game-123"]),
+            {
+                "titulo": "Guia de teste",
+                "conteudo": "Passo a passo",
+                "etapa_titulo": ["Primeira fase"],
+                "etapa_descricao": [""],
+                "detonado_img": SimpleUploadedFile(
+                    "guia.png",
+                    conteudo_imagem.getvalue(),
+                    content_type="image/png",
+                ),
+            },
+        )
+
+        self.assertEqual(resposta.status_code, 200)
+        self.assertContains(resposta, "Preencha o título e a descrição da etapa.")
+        redis_model.hset.assert_not_called()
+        redis_views.sadd.assert_not_called()
+
+    @patch("catalogo.views.redis_conn")
+    def test_lista_global_de_detonados_abre(self, redis):
+        redis.scan_iter.return_value = []
+
+        resposta = self.client.get(reverse("catalogo:detonados"))
+
+        self.assertEqual(resposta.status_code, 200)
+        self.assertContains(resposta, "Nenhum detonado encontrado")
+        redis.scan_iter.assert_called_once_with(match="detonado:*")
+
+    def test_botao_ver_detonados_da_home_abre_a_lista(self):
+        resposta = self.client.get(reverse("home:index"))
+
+        self.assertEqual(resposta.status_code, 200)
+        self.assertContains(resposta, reverse("catalogo:detonados"))
+
+    @patch("catalogo.views.redis_conn")
+    def test_admin_consegue_abrir_lista_global_sem_erro_de_url(self, redis):
+        sessao = self.client.session
+        sessao["usuario_id"] = "admin-id"
+        sessao["usuario_is_admin"] = True
+        sessao.save()
+        redis.scan_iter.return_value = []
+
+        resposta = self.client.get(reverse("catalogo:detonados"))
+
+        self.assertEqual(resposta.status_code, 200)
+        self.assertContains(resposta, reverse("catalogo:index"))
+        self.assertContains(resposta, "Escolher um jogo")
+
+    @patch("catalogo.views.redis_conn")
+    def test_lista_global_exibe_detonado_e_link_para_detalhes(self, redis):
+        redis.scan_iter.return_value = ["detonado:guide-123"]
+        redis.hgetall.side_effect = [
+            {
+                "id": "guide-123",
+                "jogo_id": "game-123",
+                "titulo": "Guia de teste",
+                "conteudo": "Primeiro passo",
+            },
+            {"genero": "Ação", "plataformas": "PC"},
+        ]
+
+        resposta = self.client.get(reverse("catalogo:detonados"))
+
+        self.assertEqual(resposta.status_code, 200)
+        self.assertContains(resposta, "Guia de teste")
+        self.assertContains(resposta, "Primeiro passo")
+        self.assertContains(
+            resposta,
+            reverse("catalogo:detalhes_detonado", args=["guide-123"]),
+        )
+
+    @patch("catalogo.views.redis_conn")
+    def test_lista_ignora_chaves_de_etapas_do_detonado(self, redis):
+        redis.scan_iter.return_value = [
+            "detonado:guide-123",
+            "detonado:guide-123:etapas",
+        ]
+        redis.hgetall.return_value = {
+            "id": "guide-123",
+            "jogo_id": "game-123",
+            "titulo": "Guia de teste",
+            "conteudo": "Primeiro passo",
+        }
+
+        resposta = self.client.get(reverse("catalogo:detonados"))
+
+        self.assertEqual(resposta.status_code, 200)
+        self.assertEqual(redis.hgetall.call_count, 2)
+
+    @patch("catalogo.views.redis_conn")
+    def test_detalhes_de_detonado_sem_imagem_abre(self, redis):
+        redis.hgetall.return_value = {
+            "id": "guide-123",
+            "titulo": "Guia de teste",
+            "conteudo": "Primeiro passo",
+        }
+
+        resposta = self.client.get(
+            reverse("catalogo:detalhes_detonado", args=["guide-123"])
+        )
+
+        self.assertEqual(resposta.status_code, 200)
+        self.assertContains(resposta, "Primeiro passo")
+        self.assertNotContains(resposta, "Imagem do Detonado")

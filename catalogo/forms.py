@@ -102,3 +102,37 @@ class JogoEdicaoForm(JogoForm):
         initial.update(kwargs.pop("initial", {}))
         super().__init__(*args, initial=initial, **kwargs)
         self.fields["imagem"].required = False
+
+class DetonadoForm(forms.Form):
+    titulo = forms.CharField(
+        max_length=150,
+        label="Título",
+        widget=forms.TextInput(
+            attrs={
+                "placeholder": "Título do detonado",
+                "autocomplete": "off",
+            }
+        ),
+    )
+    conteudo = forms.CharField(
+        label="Conteúdo",
+        widget=forms.Textarea(
+            attrs={
+                "rows": 5,
+                "placeholder": "Conteúdo do detonado",
+            }
+        ),
+    )
+    detonado_img = forms.ImageField(
+        label="Imagem do Detonado",
+        help_text="Selecione a imagem do detonado.",
+        widget=forms.ClearableFileInput(attrs={"accept": "image/*"}),
+    )
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        for campo in self.fields.values():
+            campo.widget.attrs["class"] = (
+                "w-full rounded-md border border-input bg-background px-3 py-2 "
+                "text-sm text-foreground shadow-sm placeholder:text-muted-foreground "
+                "focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
+            )
