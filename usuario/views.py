@@ -6,7 +6,9 @@ from django.contrib.auth import (
     logout as auth_logout,
 )
 from django.contrib.auth.hashers import check_password, make_password
+from django.core.exceptions import ValidationError
 from django.core.files.storage import default_storage
+from django.forms import EmailField
 from django.shortcuts import redirect, render
 from django.utils.text import slugify
 from django.utils.http import url_has_allowed_host_and_scheme
@@ -24,6 +26,10 @@ def login_view(request):
         "erro": "",
         "next": request.GET.get("next", ""),
     }
+    if request.method == "GET":
+        contexto["cadastro_sucesso"] = request.session.pop(
+            "cadastro_sucesso", False
+        )
 
     if request.method == "POST":
         email = request.POST.get("email", "").strip().lower()
@@ -117,6 +123,7 @@ def cadastro_view(request):
                 },
             )
             redis_conn.set(email_key, usuario_id)
+            request.session["cadastro_sucesso"] = True
             return redirect("usuarios:login")
 
     erros = [
@@ -146,6 +153,80 @@ def perfil_view(request):
 
     if usuario.get("foto_perfil"):
         usuario["foto_perfil_url"] = default_storage.url(usuario["foto_perfil"])
+
+    if request.method == "POST":
+        acao = request.POST.get("acao")
+        erro = ""
+
+        if acao == "editar_email":
+            try:
+                novo_email = (
+                    EmailField()
+                    .clean(request.POST.get("email", ""))
+                    .strip()
+                    .lower()
+                )
+            except ValidationError:
+                erro = "Informe um endereço de e-mail válido."
+            else:
+                nova_chave = f"usuario:email:{novo_email}"
+                usuario_existente_id = redis_conn.get(nova_chave)
+                if (
+                    usuario_existente_id
+                    and usuario_existente_id != usuario_id
+                    and redis_conn.exists(f"usuario:{usuario_existente_id}")
+                ):
+                    erro = "Este e-mail já está sendo usado por outra conta."
+                else:
+                    email_atual = usuario.get("email", "").strip().lower()
+                    if email_atual != novo_email:
+                        chave_atual = f"usuario:email:{email_atual}"
+                        if redis_conn.get(chave_atual) == usuario_id:
+                            redis_conn.delete(chave_atual)
+                        redis_conn.set(nova_chave, usuario_id)
+                        redis_conn.hset(f"usuario:{usuario_id}", "email", novo_email)
+                        request.session["usuario_email"] = novo_email
+                    return redirect("usuarios:perfil")
+
+        elif acao == "editar_senha":
+            senha_atual = request.POST.get("senha_atual", "")
+            nova_senha = request.POST.get("nova_senha", "")
+            confirmar_senha = request.POST.get("confirmar_senha", "")
+            if not check_password(senha_atual, usuario.get("senha", "")):
+                erro = "A senha atual está incorreta."
+            elif len(nova_senha) < 8:
+                erro = "A nova senha precisa ter pelo menos 8 caracteres."
+            elif nova_senha != confirmar_senha:
+                erro = "As novas senhas não coincidem."
+            else:
+                redis_conn.hset(
+                    f"usuario:{usuario_id}", "senha", make_password(nova_senha)
+                )
+                return redirect("usuarios:perfil")
+
+        elif acao == "excluir_conta":
+            senha_atual = request.POST.get("senha_atual", "")
+            if not check_password(senha_atual, usuario.get("senha", "")):
+                erro = "A senha atual está incorreta."
+            elif request.POST.get("confirmacao", "").strip() != "EXCLUIR":
+                erro = "Digite EXCLUIR para confirmar a exclusão da conta."
+            else:
+                email_key = f"usuario:email:{usuario.get('email', '').strip().lower()}"
+                if redis_conn.get(email_key) == usuario_id:
+                    redis_conn.delete(email_key)
+                redis_conn.delete(f"usuario:{usuario_id}")
+                if usuario.get("foto_perfil"):
+                    default_storage.delete(usuario["foto_perfil"])
+                request.session.flush()
+                return redirect("home:index")
+        else:
+            erro = "Não foi possível processar esta solicitação."
+
+        return render(
+            request,
+            "perfil.html",
+            {"usuario": usuario, "modal_aberto": acao, "modal_erro": erro},
+        )
 
     return render(request, "perfil.html", {"usuario": usuario})
 
@@ -199,3 +280,109 @@ def personalização_perfil(request):
         "configuracoes/perfil.html",
         {"usuario": usuario, "form": form},
     )
+
+
+def delete_perfil(request):
+    usuario_id = request.session.get("usuario_id")
+    if not usuario_id:
+        return redirect("usuarios:login")
+
+    usuario = redis_conn.hgetall(f"usuario:{usuario_id}")
+    if not usuario:
+        return redirect("usuarios:login")
+
+    foto_perfil = usuario.get("foto_perfil")
+    if foto_perfil:
+        default_storage.delete(foto_perfil)
+
+    redis_conn.delete(f"usuario:{usuario_id}")
+    redis_conn.delete(f"usuario:email:{usuario.get('email', '')}")
+
+    auth_logout(request)
+    return redirect("home:index")
+
+def seguranca_perfil(request):
+    usuario_id = request.session.get("usuario_id")
+    if not usuario_id:
+        return redirect("usuarios:login")
+
+    usuario = redis_conn.hgetall(f"usuario:{usuario_id}")
+    if not usuario:
+        return redirect("usuarios:login")
+
+    if request.method == "POST":
+        acao = request.POST.get("acao")
+        erro = ""
+
+        if acao == "editar_email":
+            try:
+                novo_email = (
+                    EmailField()
+                    .clean(request.POST.get("email", ""))
+                    .strip()
+                    .lower()
+                )
+            except ValidationError:
+                erro = "Informe um endereço de e-mail válido."
+            else:
+                nova_chave = f"usuario:email:{novo_email}"
+                usuario_existente_id = redis_conn.get(nova_chave)
+                if (
+                    usuario_existente_id
+                    and usuario_existente_id != usuario_id
+                    and redis_conn.exists(f"usuario:{usuario_existente_id}")
+                ):
+                    erro = "Este e-mail já está sendo usado por outra conta."
+                else:
+                    email_atual = usuario.get("email", "").strip().lower()
+                    if email_atual != novo_email:
+                        chave_atual = f"usuario:email:{email_atual}"
+                        if redis_conn.get(chave_atual) == usuario_id:
+                            redis_conn.delete(chave_atual)
+                        redis_conn.set(nova_chave, usuario_id)
+                        redis_conn.hset(f"usuario:{usuario_id}", "email", novo_email)
+                        request.session["usuario_email"] = novo_email
+                    return redirect("usuarios:seguranca_perfil")
+
+        elif acao == "editar_senha":
+            senha_atual = request.POST.get("senha_atual", "")
+            nova_senha = request.POST.get("nova_senha", "")
+            confirmar_senha = request.POST.get("confirmar_senha", "")
+            if not check_password(senha_atual, usuario.get("senha", "")):
+                erro = "A senha atual está incorreta."
+            elif len(nova_senha) < 8:
+                erro = "A nova senha precisa ter pelo menos 8 caracteres."
+            elif nova_senha != confirmar_senha:
+                erro = "As novas senhas não coincidem."
+            else:
+                redis_conn.hset(
+                    f"usuario:{usuario_id}", "senha", make_password(nova_senha)
+                )
+                return redirect("usuarios:seguranca_perfil")
+
+        elif acao == "excluir_conta":
+            senha_atual = request.POST.get("senha_atual", "")
+            if not check_password(senha_atual, usuario.get("senha", "")):
+                erro = "A senha atual está incorreta."
+            elif request.POST.get("confirmacao", "").strip() != "EXCLUIR":
+                erro = "Digite EXCLUIR para confirmar a exclusão da conta."
+            else:
+                email_key = f"usuario:email:{usuario.get('email', '').strip().lower()}"
+                if redis_conn.get(email_key) == usuario_id:
+                    redis_conn.delete(email_key)
+                redis_conn.delete(f"usuario:{usuario_id}")
+                if usuario.get("foto_perfil"):
+                    default_storage.delete(usuario["foto_perfil"])
+                request.session.flush()
+                return redirect("home:index")
+
+        else:
+            erro = "Não foi possível processar esta solicitação."
+
+        return render(
+            request,
+            "configuracoes/seguranca.html",
+            {"usuario": usuario, "modal_aberto": acao, "modal_erro": erro},
+        )
+
+    return render(request, "configuracoes/seguranca.html", {"usuario": usuario})

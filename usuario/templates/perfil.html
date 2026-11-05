@@ -31,7 +31,7 @@
                        class="rounded-md px-4 py-3 text-base text-muted-foreground transition hover:bg-secondary hover:text-secondary-foreground">
                         Personalização
                     </a>
-                    <a href="#seguranca"
+                    <a href="{% url 'usuarios:seguranca_perfil' %}"
                        class="rounded-md px-4 py-3 text-base text-muted-foreground transition hover:bg-secondary hover:text-secondary-foreground">
                         Segurança
                     </a>
@@ -81,6 +81,10 @@
                             <dd class="mt-2 break-all text-base font-medium">{{ usuario.email|default:"Não informado" }}</dd>
                         </div>
                     </dl>
+                    <a href="{% url 'usuarios:seguranca_perfil' %}"
+                       class="mt-6 inline-flex rounded-md border border-border px-4 py-2 text-sm font-medium transition hover:bg-secondary">
+                        Alterar e-mail
+                    </a>
                 </section>
 
                 <section id="seguranca" aria-labelledby="titulo-seguranca"
@@ -96,9 +100,14 @@
                             Sair da conta
                         </button>
                     </form>
+                    <a href="{% url 'usuarios:seguranca_perfil' %}"
+                       class="mt-6 inline-flex rounded-md border border-border px-4 py-2 text-sm font-medium transition hover:bg-secondary">
+                        Gerenciar segurança
+                    </a>
                 </section>
             </div>
         </div>
     </main>
+
 </body>
 </html>

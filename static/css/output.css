@@ -21,6 +21,7 @@
     --color-white: #fff;
     --spacing: 0.25rem;
     --container-md: 28rem;
+    --container-lg: 32rem;
     --container-xl: 36rem;
     --container-2xl: 42rem;
     --container-3xl: 48rem;
@@ -264,6 +265,9 @@
       max-width: 96rem;
     }
   }
+  .m-auto {
+    margin: auto;
+  }
   .mx-auto {
     margin-inline: auto;
   }
@@ -401,6 +405,9 @@
   .h-full {
     height: 100%;
   }
+  .max-h-48 {
+    max-height: calc(var(--spacing) * 48);
+  }
   .min-h-6 {
     min-height: calc(var(--spacing) * 6);
   }
@@ -421,6 +428,9 @@
   }
   .w-64 {
     width: calc(var(--spacing) * 64);
+  }
+  .w-\[calc\(100\%-2rem\)\] {
+    width: calc(100% - 2rem);
   }
   .w-auto {
     width: auto;
@@ -445,6 +455,9 @@
   }
   .max-w-full {
     max-width: 100%;
+  }
+  .max-w-lg {
+    max-width: var(--container-lg);
   }
   .max-w-md {
     max-width: var(--container-md);
@@ -478,6 +491,9 @@
   }
   .justify-center {
     justify-content: center;
+  }
+  .justify-end {
+    justify-content: flex-end;
   }
   .gap-2 {
     gap: calc(var(--spacing) * 2);
@@ -519,8 +535,14 @@
     margin-block-start: calc(calc(var(--spacing) * 6) * var(--tw-space-y-reverse));
     margin-block-end: calc(calc(var(--spacing) * 6) * calc(1 - var(--tw-space-y-reverse)));
   }
+  .gap-x-4 {
+    column-gap: calc(var(--spacing) * 4);
+  }
   .gap-y-1\.5 {
     row-gap: calc(var(--spacing) * 1.5);
+  }
+  .gap-y-2 {
+    row-gap: calc(var(--spacing) * 2);
   }
   :where(.divide-y > :not(:last-child)) {
     --tw-divide-y-reverse: 0;
@@ -578,6 +600,9 @@
     @supports (color: color-mix(in lab, red, red)) {
       border-color: color-mix(in oklab, var(--border) 70%, transparent);
     }
+  }
+  .border-destructive {
+    border-color: var(--destructive);
   }
   .border-destructive\/40 {
     border-color: var(--destructive);
@@ -732,6 +757,9 @@
   }
   .object-cover {
     object-fit: cover;
+  }
+  .p-0 {
+    padding: 0px;
   }
   .p-2 {
     padding: calc(var(--spacing) * 2);
@@ -1057,6 +1085,12 @@
   .placeholder\:text-zinc-600::placeholder {
     color: var(--color-zinc-600);
   }
+  .backdrop\:bg-black\/60::backdrop {
+    background-color: color-mix(in srgb, #000 60%, transparent);
+    @supports (color: color-mix(in lab, red, red)) {
+      background-color: color-mix(in oklab, var(--color-black) 60%, transparent);
+    }
+  }
   .first\:pt-0:first-child {
     padding-top: 0px;
   }
@@ -1095,6 +1129,9 @@
     }
     .hover\:bg-card:hover {
       background-color: var(--card);
+    }
+    .hover\:bg-destructive:hover {
+      background-color: var(--destructive);
     }
     .hover\:bg-destructive\/90:hover {
       background-color: var(--destructive);
@@ -1136,6 +1173,9 @@
     }
     .hover\:text-accent-foreground:hover {
       color: var(--accent-foreground);
+    }
+    .hover\:text-destructive-foreground:hover {
+      color: var(--destructive-foreground);
     }
     .hover\:text-foreground:hover {
       color: var(--foreground);
