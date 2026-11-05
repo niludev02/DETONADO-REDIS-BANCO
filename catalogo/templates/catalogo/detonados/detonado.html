@@ -1,28 +1,81 @@
 {% extends "base.html" %}
 
-{% block title %}Detonado - {{ detonado.titulo }}{% endblock %}
+{% block title %}Detonados - {{ detonado.titulo }}{% endblock %}
 
 {% block content %}
+<main class="mx-auto max-w-5xl space-y-8 px-4 py-8 sm:px-6 lg:px-8 lg:py-12">
+    {% if detonado.jogo_id %}
+        <a href="{% url 'catalogo:detalhes' detonado.jogo_id %}"
+           class="inline-flex items-center gap-2 rounded-full border border-border bg-card px-4 py-2 text-sm font-medium text-muted-foreground transition hover:border-primary/50 hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring">
+            <svg aria-hidden="true" class="size-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                <path d="m15 18-6-6 6-6"></path>
+            </svg>
+            Voltar ao jogo
+        </a>
+    {% else %}
+        <a href="{% url 'catalogo:detonados' %}"
+           class="inline-flex items-center gap-2 rounded-full border border-border bg-card px-4 py-2 text-sm font-medium text-muted-foreground transition hover:border-primary/50 hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring">
+            <svg aria-hidden="true" class="size-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                <path d="m15 18-6-6 6-6"></path>
+            </svg>
+            Voltar aos detonados
+        </a>
+    {% endif %}
 
-    <div class="container mx-auto px-4 py-8">
-        <h1 class="text-3xl font-bold mb-4">{{ detonado.titulo }}</h1>
-        <p class="text-lg mb-4">{{ detonado.conteudo|default:detonado.descricao }}</p>
-        {% if detonado.detonado_img_url %}
-            <img src="{{ detonado.detonado_img_url }}" alt="Imagem do Detonado" class="mx-auto mb-4">
-        {% endif %}
+    <article class="overflow-hidden rounded-2xl border border-border bg-card shadow-xl shadow-black/20">
+        <header class="relative isolate flex min-h-72 items-end overflow-hidden bg-gradient-to-br from-primary/30 via-card to-background sm:min-h-96">
+            {% if detonado.detonado_img_url %}
+                <img src="{{ detonado.detonado_img_url }}" alt=""
+                     class="absolute inset-0 -z-20 size-full object-cover">
+                <div aria-hidden="true" class="absolute inset-0 -z-10 bg-gradient-to-t from-background via-background/75 to-background/10"></div>
+            {% else %}
+                <div aria-hidden="true" class="absolute inset-0 -z-10 bg-gradient-to-t from-background via-background/60 to-transparent"></div>
+            {% endif %}
+
+            <div class="w-full space-y-4 p-6 sm:p-10">
+                <span class="inline-flex rounded-full border border-primary/30 bg-primary/15 px-3 py-1 text-xs font-semibold text-primary">
+                    Detonado
+                </span>
+                <h1 class="max-w-3xl text-3xl font-bold tracking-tight drop-shadow sm:text-5xl">
+                    {{ detonado.titulo }}
+                </h1>
+                <p class="max-w-3xl whitespace-pre-line text-base leading-7 text-foreground/80">
+                    {{ detonado.conteudo|default:detonado.descricao }}
+                </p>
+            </div>
+        </header>
+
         {% if etapas %}
-            <section class="mt-8 space-y-4" aria-labelledby="etapas-detonado">
-                <h2 id="etapas-detonado" class="text-2xl font-semibold">Etapas</h2>
-                {% for etapa in etapas %}
-                    <article class="rounded-lg border border-border bg-card p-5">
-                        <h3 class="text-lg font-semibold">{{ forloop.counter }}. {{ etapa.titulo }}</h3>
-                        <p class="mt-2 whitespace-pre-line text-muted-foreground">{{ etapa.descricao }}</p>
-                    </article>
-                {% endfor %}
+            <section class="space-y-5 p-6 sm:p-10" aria-labelledby="etapas-detonado">
+                <div>
+                    <h2 id="etapas-detonado" class="text-2xl font-semibold">Passo a passo</h2>
+                    <p class="mt-1 text-sm text-muted-foreground">
+                        {{ etapas|length }} etapa{{ etapas|length|pluralize }} neste guia.
+                    </p>
+                </div>
+
+                <ol class="space-y-4">
+                    {% for etapa in etapas %}
+                        <li class="relative flex gap-4 rounded-xl border border-border bg-background/70 p-5 sm:gap-6 sm:p-6">
+                            <span class="flex size-9 shrink-0 items-center justify-center rounded-full bg-primary/10 text-sm font-bold text-primary">
+                                {{ forloop.counter }}
+                            </span>
+                            <div class="min-w-0 flex-1">
+                                <h3 class="text-lg font-semibold">{{ etapa.titulo }}</h3>
+                                <p class="mt-2 whitespace-pre-line text-sm leading-7 text-muted-foreground">
+                                    {{ etapa.descricao }}
+                                </p>
+                            </div>
+                        </li>
+                    {% endfor %}
+                </ol>
             </section>
         {% elif detonado.etapa %}
-            <p class="text-xl font-semibold">Etapa: {{ detonado.etapa }}</p>
+            <section class="p-6 sm:p-10" aria-labelledby="etapas-detonado">
+                <h2 id="etapas-detonado" class="text-xl font-semibold">Etapa</h2>
+                <p class="mt-2 whitespace-pre-line leading-7 text-muted-foreground">{{ detonado.etapa }}</p>
+            </section>
         {% endif %}
-    </div>
-   
+    </article>
+</main>
 {% endblock %}

@@ -69,6 +69,38 @@ class CriarJogoTests(TestCase):
         self.assertContains(resposta, "Distribuidora")
 
     @patch("catalogo.views.redis_conn")
+    def test_pagina_de_jogo_lista_seus_detonados(self, redis):
+        redis.hgetall.side_effect = [
+            {
+                "id": "game-123",
+                "titulo": "Jogo de teste",
+                "descricao": "Uma aventura",
+                "imagem": "",
+            },
+            {
+                "id": "guide-123",
+                "titulo": "Guia de teste",
+                "conteudo": "Passo a passo do jogo",
+                "detonado_img": "",
+            },
+        ]
+        redis.smembers.return_value = {"guide-123"}
+
+        resposta = self.client.get(
+            reverse("catalogo:detalhes", args=["game-123"])
+        )
+
+        self.assertEqual(resposta.status_code, 200)
+        self.assertContains(resposta, "Detonados deste jogo")
+        self.assertContains(resposta, "Guia de teste")
+        self.assertContains(resposta, "Passo a passo do jogo")
+        self.assertContains(
+            resposta,
+            reverse("catalogo:detalhes_detonado", args=["guide-123"]),
+        )
+        redis.smembers.assert_called_once_with("jogo:game-123:detonados")
+
+    @patch("catalogo.views.redis_conn")
     def test_detalhes_de_jogo_inexistente_retorna_404(self, redis):
         redis.hgetall.return_value = {}
 

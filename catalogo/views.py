@@ -48,6 +48,23 @@ def detalhes_jogo(request, jogo_id):
     if not jogo:
         raise Http404("Jogo não encontrado.")
 
+    detonado_ids = redis_conn.smembers(f"jogo:{jogo_id}:detonados")
+    detonados = []
+    for detonado_id in detonado_ids:
+        detonado = redis_conn.hgetall(f"detonado:{detonado_id}")
+        if not detonado:
+            continue
+
+        detonado.setdefault("id", detonado_id)
+        detonado["descricao"] = (
+            detonado.get("descricao") or detonado.get("conteudo", "")
+        )
+        imagem_detonado = detonado.get("detonado_img", "")
+        detonado["detonado_img_url"] = (
+            default_storage.url(imagem_detonado) if imagem_detonado else ""
+        )
+        detonados.append(detonado)
+
     imagem = jogo.get("imagem", "")
     if imagem.startswith(("http://", "https://")):
         jogo["imagem_url"] = imagem
@@ -59,6 +76,7 @@ def detalhes_jogo(request, jogo_id):
         "catalogo/jogos/detalhes.html",
         {
             "jogo": jogo,
+            "detonados": detonados,
             "pode_editar_jogo": _eh_administrador(request),
         },
     )
