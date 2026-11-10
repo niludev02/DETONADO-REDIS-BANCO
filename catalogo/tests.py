@@ -80,7 +80,7 @@ class CriarJogoTests(TestCase):
             {
                 "id": "guide-123",
                 "titulo": "Guia de teste",
-                "conteudo": "Passo a passo do jogo",
+                "conteudo": "**Passo a passo** do jogo",
                 "detonado_img": "",
             },
         ]
@@ -93,7 +93,7 @@ class CriarJogoTests(TestCase):
         self.assertEqual(resposta.status_code, 200)
         self.assertContains(resposta, "Detonados deste jogo")
         self.assertContains(resposta, "Guia de teste")
-        self.assertContains(resposta, "Passo a passo do jogo")
+        self.assertContains(resposta, "<strong>Passo a passo</strong> do jogo")
         self.assertContains(
             resposta,
             reverse("catalogo:detalhes_detonado", args=["guide-123"]),
@@ -303,6 +303,341 @@ class CriarJogoTests(TestCase):
 
 
 class DetonadosTests(TestCase):
+    @patch("catalogo.views.Detonado.obter")
+    @patch("catalogo.views.Jogo.obter")
+    def test_edicao_exibe_formulario_preenchido(self, obter_jogo, obter_detonado):
+        sessao = self.client.session
+        sessao["usuario_id"] = "author-123"
+        sessao.save()
+        obter_jogo.return_value = {"id": "game-123", "titulo": "Jogo teste"}
+        obter_detonado.return_value = {
+            "id": "guide-123",
+            "jogo_id": "game-123",
+            "titulo": "Guia antigo",
+            "descricao": "Descrição antiga",
+            "conteudo": "**Texto**",
+            "autor_id": "author-123",
+            "etapas": [
+                {
+                    "id": "stage-1",
+                    "titulo": "Etapa inicial",
+                    "descricao": "Descrição da etapa",
+                    "etapa_img": "",
+                }
+            ],
+        }
+
+        resposta = self.client.get(
+            reverse("catalogo:editar_detonado", args=["game-123", "guide-123"])
+        )
+
+        self.assertEqual(resposta.status_code, 200)
+        self.assertContains(resposta, "Editar detonado")
+        self.assertContains(resposta, 'value="Guia antigo"')
+        self.assertContains(resposta, "**Texto**")
+        self.assertContains(resposta, 'name="conteudo"')
+        self.assertContains(resposta, 'value="stage-1"')
+        self.assertContains(resposta, "Etapa inicial")
+
+    @patch("catalogo.views.Detonado.atualizar")
+    @patch("catalogo.views.Detonado.obter")
+    @patch("catalogo.views.Jogo.obter")
+    def test_edicao_salva_dados_e_redireciona_para_detonado(
+        self,
+        obter_jogo,
+        obter_detonado,
+        atualizar,
+    ):
+        sessao = self.client.session
+        sessao["usuario_id"] = "author-123"
+        sessao.save()
+        obter_jogo.return_value = {"id": "game-123", "titulo": "Jogo teste"}
+        obter_detonado.return_value = {
+            "id": "guide-123",
+            "jogo_id": "game-123",
+            "titulo": "Guia antigo",
+            "conteudo": "Texto antigo",
+            "autor_id": "author-123",
+        }
+
+        resposta = self.client.post(
+            reverse("catalogo:editar_detonado", args=["game-123", "guide-123"]),
+            {
+                "titulo": "Guia atualizado",
+                "conteudo": "Novo **texto**",
+                "etapa_id": [""],
+                "etapa_titulo": ["Etapa"],
+                "etapa_descricao": ["Descrição da etapa"],
+            },
+        )
+
+        self.assertRedirects(
+            resposta,
+            reverse("catalogo:detalhes_detonado", args=["guide-123"]),
+            fetch_redirect_response=False,
+        )
+        atualizar.assert_called_once_with(
+            "guide-123",
+            titulo="Guia atualizado",
+            descricao="Novo **texto**",
+            conteudo="Novo **texto**",
+            detonado_img="",
+        )
+
+    @patch("catalogo.views.Detonado.obter")
+    @patch("catalogo.views.Jogo.obter")
+    def test_edicao_invalida_mostra_mensagem_sem_apagar_valores(
+        self,
+        obter_jogo,
+        obter_detonado,
+    ):
+        sessao = self.client.session
+        sessao["usuario_id"] = "author-123"
+        sessao.save()
+        obter_jogo.return_value = {"id": "game-123"}
+        obter_detonado.return_value = {
+            "id": "guide-123",
+            "jogo_id": "game-123",
+            "titulo": "Guia antigo",
+            "conteudo": "Texto antigo",
+            "autor_id": "author-123",
+        }
+
+        resposta = self.client.post(
+            reverse("catalogo:editar_detonado", args=["game-123", "guide-123"]),
+            {
+                "titulo": "",
+                "conteudo": "Conteúdo preservado",
+                "etapa_id": [""],
+                "etapa_titulo": ["Etapa"],
+                "etapa_descricao": ["Descrição da etapa"],
+            },
+        )
+
+        self.assertEqual(resposta.status_code, 200)
+        self.assertContains(resposta, "This field is required.")
+        self.assertContains(resposta, "Conteúdo preservado")
+
+    @patch("catalogo.views.Etapa.criar")
+    @patch("catalogo.views.Etapa.atualizar")
+    @patch("catalogo.views.Etapa.excluir")
+    @patch("catalogo.views.Detonado.atualizar")
+    @patch("catalogo.views.Detonado.obter")
+    @patch("catalogo.views.Jogo.obter")
+    def test_edicao_atualiza_adiciona_e_remove_etapas(
+        self,
+        obter_jogo,
+        obter_detonado,
+        atualizar_detonado,
+        excluir_etapa,
+        atualizar_etapa,
+        criar_etapa,
+    ):
+        sessao = self.client.session
+        sessao["usuario_id"] = "author-123"
+        sessao.save()
+        obter_jogo.return_value = {"id": "game-123", "titulo": "Jogo teste"}
+        obter_detonado.return_value = {
+            "id": "guide-123",
+            "jogo_id": "game-123",
+            "titulo": "Guia antigo",
+            "conteudo": "Introdução antiga",
+            "autor_id": "author-123",
+            "detonado_img": "detonados/capa-antiga.png",
+            "etapas": [
+                {
+                    "id": "stage-1",
+                    "titulo": "Etapa antiga",
+                    "descricao": "Descrição antiga",
+                    "etapa_img": "detonados/etapas/antiga.png",
+                },
+                {
+                    "id": "stage-2",
+                    "titulo": "Etapa removida",
+                    "descricao": "Essa etapa será removida",
+                    "etapa_img": "",
+                },
+            ],
+        }
+
+        resposta = self.client.post(
+            reverse("catalogo:editar_detonado", args=["game-123", "guide-123"]),
+            {
+                "titulo": "Guia atualizado",
+                "conteudo": "Nova introdução",
+                "etapa_id": ["stage-1", ""],
+                "etapa_titulo": ["Etapa atualizada", "Nova etapa"],
+                "etapa_descricao": ["Descrição atualizada", "Nova descrição"],
+            },
+        )
+
+        self.assertRedirects(
+            resposta,
+            reverse("catalogo:detalhes_detonado", args=["guide-123"]),
+            fetch_redirect_response=False,
+        )
+        atualizar_detonado.assert_called_once_with(
+            "guide-123",
+            titulo="Guia atualizado",
+            descricao="Nova introdução",
+            conteudo="Nova introdução",
+            detonado_img="detonados/capa-antiga.png",
+        )
+        atualizar_etapa.assert_called_once_with(
+            "stage-1",
+            "Etapa atualizada",
+            "Descrição atualizada",
+            etapa_img="detonados/etapas/antiga.png",
+        )
+        excluir_etapa.assert_called_once_with("stage-2")
+        criar_etapa.assert_called_once_with(
+            detonado_id="guide-123",
+            titulo="Nova etapa",
+            descricao="Nova descrição",
+            etapa_img="",
+        )
+
+    @patch("catalogo.views.default_storage.delete")
+    @patch("catalogo.views._salvar_imagem", return_value="detonados/etapas/nova.png")
+    @patch("catalogo.views.Etapa.criar")
+    @patch("catalogo.views.Etapa.atualizar")
+    @patch("catalogo.views.Detonado.atualizar")
+    @patch("catalogo.views.Detonado.obter")
+    @patch("catalogo.views.Jogo.obter")
+    def test_imagem_selecionada_atualiza_a_etapa_correta(
+        self,
+        obter_jogo,
+        obter_detonado,
+        atualizar_detonado,
+        atualizar_etapa,
+        criar_etapa,
+        salvar_imagem,
+        apagar_imagem,
+    ):
+        sessao = self.client.session
+        sessao["usuario_id"] = "author-123"
+        sessao.save()
+        obter_jogo.return_value = {"id": "game-123"}
+        obter_detonado.return_value = {
+            "id": "guide-123",
+            "jogo_id": "game-123",
+            "titulo": "Guia",
+            "conteudo": "Introdução",
+            "autor_id": "author-123",
+            "etapas": [
+                {
+                    "id": "stage-1",
+                    "titulo": "Primeira etapa",
+                    "descricao": "Texto 1",
+                    "etapa_img": "detonados/etapas/primeira.png",
+                },
+                {
+                    "id": "stage-2",
+                    "titulo": "Segunda etapa",
+                    "descricao": "Texto 2",
+                    "etapa_img": "detonados/etapas/segunda.png",
+                },
+            ],
+        }
+        imagem_bytes = BytesIO()
+        Image.new("RGB", (1, 1), color="blue").save(imagem_bytes, format="PNG")
+
+        resposta = self.client.post(
+            reverse("catalogo:editar_detonado", args=["game-123", "guide-123"]),
+            {
+                "titulo": "Guia",
+                "conteudo": "Introdução",
+                "etapa_id": ["stage-1", "stage-2"],
+                "etapa_titulo": ["Primeira etapa", "Segunda etapa"],
+                "etapa_descricao": ["Texto 1", "Texto 2"],
+                "etapa_img_1": SimpleUploadedFile(
+                    "segunda.png",
+                    imagem_bytes.getvalue(),
+                    content_type="image/png",
+                ),
+            },
+        )
+
+        self.assertEqual(resposta.status_code, 302)
+        self.assertEqual(
+            [chamada.args for chamada in atualizar_etapa.call_args_list],
+            [
+                ("stage-1", "Primeira etapa", "Texto 1"),
+                ("stage-2", "Segunda etapa", "Texto 2"),
+            ],
+        )
+        self.assertEqual(
+            [chamada.kwargs["etapa_img"] for chamada in atualizar_etapa.call_args_list],
+            ["detonados/etapas/primeira.png", "detonados/etapas/nova.png"],
+        )
+        apagar_imagem.assert_called_once_with("detonados/etapas/segunda.png")
+
+    def test_acoes_de_edicao_e_exclusao_ficam_no_lado_oposto_ao_voltar(self):
+        sessao = self.client.session
+        sessao["usuario_id"] = "author-123"
+        sessao.save()
+        with patch("catalogo.views.redis_conn") as redis:
+            redis.hgetall.return_value = {
+                "id": "guide-123",
+                "jogo_id": "game-123",
+                "titulo": "Guia de teste",
+                "autor_id": "author-123",
+            }
+            redis.lrange.return_value = []
+
+            resposta = self.client.get(
+                reverse("catalogo:detalhes_detonado", args=["guide-123"])
+            )
+
+        self.assertEqual(resposta.status_code, 200)
+        conteudo = resposta.content.decode()
+        self.assertLess(conteudo.index("Voltar ao jogo"), conteudo.index("Editar detonado"))
+        self.assertLess(conteudo.index("Editar detonado"), conteudo.index("Excluir detonado"))
+        self.assertContains(resposta, "modal-excluir-detonado")
+        self.assertContains(resposta, "removidos permanentemente")
+
+    @patch("catalogo.views.Detonado.excluir")
+    @patch("catalogo.views.redis_conn")
+    def test_autor_exclui_detonado_e_volta_para_o_jogo(self, redis, excluir):
+        sessao = self.client.session
+        sessao["usuario_id"] = "author-123"
+        sessao.save()
+        redis.hgetall.return_value = {
+            "id": "guide-123",
+            "jogo_id": "game-123",
+            "autor_id": "author-123",
+        }
+        redis.exists.return_value = True
+
+        resposta = self.client.post(
+            reverse("catalogo:excluir_detonado", args=["guide-123"])
+        )
+
+        self.assertRedirects(
+            resposta,
+            reverse("catalogo:detalhes", args=["game-123"]),
+        )
+        excluir.assert_called_once_with("guide-123")
+
+    @patch("catalogo.views.Detonado.excluir")
+    @patch("catalogo.views.redis_conn")
+    def test_usuario_nao_autorizado_nao_exclui_detonado(self, redis, excluir):
+        sessao = self.client.session
+        sessao["usuario_id"] = "outro-usuario"
+        sessao.save()
+        redis.hgetall.return_value = {
+            "id": "guide-123",
+            "jogo_id": "game-123",
+            "autor_id": "author-123",
+        }
+
+        resposta = self.client.post(
+            reverse("catalogo:excluir_detonado", args=["guide-123"])
+        )
+
+        self.assertEqual(resposta.status_code, 403)
+        excluir.assert_not_called()
+
     @patch("catalogo.views.redis_conn")
     def test_formulario_de_detonado_exibe_campos(self, redis):
         redis.hgetall.return_value = {"id": "game-123", "titulo": "Jogo de teste"}
@@ -317,7 +652,14 @@ class DetonadosTests(TestCase):
         self.assertContains(resposta, 'name="detonado_img"')
         self.assertContains(resposta, 'name="etapa_titulo"')
         self.assertContains(resposta, 'name="etapa_descricao"')
+        self.assertContains(resposta, 'name="etapa_img"')
         self.assertContains(resposta, "Adicionar etapa")
+        self.assertContains(resposta, 'data-markdown-action="bold"')
+        self.assertContains(resposta, 'data-markdown-action="italic"')
+        self.assertContains(resposta, 'data-markdown-action="line"')
+        self.assertContains(resposta, 'data-open-markdown-help')
+        self.assertContains(resposta, 'id="ajuda-markdown"')
+        self.assertContains(resposta, "Como formatar com Markdown")
 
     @patch("catalogo.models.redis_conn")
     @patch("catalogo.views.redis_conn")
@@ -384,9 +726,8 @@ class DetonadosTests(TestCase):
                     "jogo:game-123:detonados",
                     detonado_mapping["id"],
                 )
-                self.assertEqual(redis_views.sadd.call_count, 1)
                 self.assertEqual(
-                    [chamada.args for chamada in redis_views.rpush.call_args_list],
+                    [chamada.args for chamada in redis_model.rpush.call_args_list],
                     [
                         (
                             f"detonado:{detonado_mapping['id']}:etapas",
@@ -398,6 +739,49 @@ class DetonadosTests(TestCase):
                         ),
                     ],
                 )
+                redis_views.rpush.assert_not_called()
+
+    @patch("catalogo.models.redis_conn")
+    @patch("catalogo.views.redis_conn")
+    def test_formulario_de_detonado_aceita_imagem_em_etapa(
+        self,
+        redis_views,
+        redis_model,
+    ):
+        redis_views.hgetall.return_value = {"id": "game-123", "titulo": "Jogo de teste"}
+        conteudo_imagem = BytesIO()
+        Image.new("RGB", (1, 1), color="red").save(conteudo_imagem, format="PNG")
+
+        with TemporaryDirectory() as media_root:
+            with self.settings(MEDIA_ROOT=media_root):
+                resposta = self.client.post(
+                    reverse("catalogo:criar_detonado", args=["game-123"]),
+                    {
+                        "titulo": "Guia de teste",
+                        "conteudo": "Passo a passo",
+                        "etapa_titulo": ["Primeira fase"],
+                        "etapa_descricao": ["Atravesse a floresta."],
+                        "etapa_img": [
+                            SimpleUploadedFile(
+                                "etapa.png",
+                                conteudo_imagem.getvalue(),
+                                content_type="image/png",
+                            )
+                        ],
+                    },
+                )
+
+                self.assertEqual(resposta.status_code, 302)
+                detonado_mapping = redis_model.hset.call_args_list[0].kwargs["mapping"]
+                etapa_mapping = redis_model.hset.call_args_list[1].kwargs["mapping"]
+                self.assertEqual(detonado_mapping["titulo"], "Guia de teste")
+                self.assertTrue(etapa_mapping["etapa_img"].startswith("detonados/etapas/"))
+                self.assertTrue(etapa_mapping["etapa_img"].endswith(".png"))
+                redis_model.rpush.assert_called_once_with(
+                    f"detonado:{detonado_mapping['id']}:etapas",
+                    etapa_mapping["id"],
+                )
+                redis_views.rpush.assert_not_called()
 
     @patch("catalogo.views.redis_conn")
     def test_detalhes_exibe_etapas_na_ordem_salva(self, redis):
@@ -406,9 +790,18 @@ class DetonadosTests(TestCase):
                 "id": "guide-123",
                 "titulo": "Guia de teste",
                 "conteudo": "Introdução",
+                "autor_id": "author-123",
+                "data_detonado": "2026-11-09T12:30:00+00:00",
             },
-            {"titulo": "Primeira fase", "descricao": "Explore a floresta."},
-            {"titulo": "Chefe final", "descricao": "Derrote o chefe."},
+            {
+                "titulo": "Primeira fase",
+                "descricao": "**Explore** a floresta.\n\n- Pegue a chave",
+            },
+            {
+                "titulo": "Chefe final",
+                "descricao": "<script>alert(1)</script>Derrote o chefe.",
+            },
+            {"nome": "Pessoa Autora"},
         ]
         redis.lrange.return_value = ["stage-1", "stage-2"]
 
@@ -421,6 +814,14 @@ class DetonadosTests(TestCase):
             resposta.content.index(b"Primeira fase"),
             resposta.content.index(b"Chefe final"),
         )
+        self.assertContains(resposta, "<strong>Explore</strong>")
+        self.assertContains(resposta, "<ul>")
+        self.assertNotContains(resposta, "<script>")
+        self.assertContains(resposta, "Pessoa Autora")
+        self.assertContains(resposta, "Criado em")
+        self.assertContains(resposta, "Navegação rápida")
+        self.assertContains(resposta, 'href="#etapa-1"')
+        self.assertContains(resposta, 'id="etapa-2"')
 
     @patch("catalogo.models.redis_conn")
     @patch("catalogo.views.redis_conn")
@@ -491,7 +892,7 @@ class DetonadosTests(TestCase):
                 "id": "guide-123",
                 "jogo_id": "game-123",
                 "titulo": "Guia de teste",
-                "conteudo": "Primeiro passo",
+                "conteudo": "**Primeiro** passo",
             },
             {"genero": "Ação", "plataformas": "PC"},
         ]
@@ -500,7 +901,7 @@ class DetonadosTests(TestCase):
 
         self.assertEqual(resposta.status_code, 200)
         self.assertContains(resposta, "Guia de teste")
-        self.assertContains(resposta, "Primeiro passo")
+        self.assertContains(resposta, "<strong>Primeiro</strong> passo")
         self.assertContains(
             resposta,
             reverse("catalogo:detalhes_detonado", args=["guide-123"]),

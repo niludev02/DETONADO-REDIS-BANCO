@@ -23,6 +23,19 @@
                     <label for="{{ campo.id_for_label }}" class="text-sm font-medium">
                         {{ campo.label }}
                     </label>
+                    {% if campo.name == 'conteudo' %}
+                        <div data-markdown-toolbar data-target="{{ campo.id_for_label }}"
+                             class="flex flex-wrap gap-2" aria-label="Formatação Markdown">
+                            <button type="button" data-markdown-action="bold" title="Negrito"
+                                    class="rounded border border-border px-3 py-1 text-sm font-bold hover:bg-secondary">B</button>
+                            <button type="button" data-markdown-action="italic" title="Itálico"
+                                    class="rounded border border-border px-3 py-1 text-sm italic hover:bg-secondary">I</button>
+                            <button type="button" data-markdown-action="line" title="Inserir linha horizontal"
+                                    class="rounded border border-border px-3 py-1 text-sm hover:bg-secondary">Linha</button>
+                            <button type="button" data-open-markdown-help aria-label="Ajuda sobre Markdown" title="Como usar Markdown"
+                                    class="inline-flex size-8 items-center justify-center rounded-full border border-border text-sm font-semibold hover:bg-secondary">?</button>
+                        </div>
+                    {% endif %}
                     {{ campo }}
                     {% if campo.help_text %}
                         <p class="text-xs text-muted-foreground">{{ campo.help_text }}</p>
@@ -41,7 +54,7 @@
                     <div>
                         <h2 id="etapas-heading" class="text-lg font-semibold">Etapas do detonado</h2>
                         <p class="mt-1 text-sm text-muted-foreground">
-                            Adicione o título e a descrição de cada etapa.
+                            Adicione o título e a descrição de cada etapa. A descrição aceita Markdown: **negrito**, *itálico*, listas e links.
                         </p>
                     </div>
                     <button id="adicionar-etapa" type="button"
@@ -71,9 +84,27 @@
                                 <label for="etapa-descricao-{{ forloop.counter0 }}" class="text-sm font-medium">
                                     Descrição da etapa
                                 </label>
+                                <div data-markdown-toolbar data-target="etapa-descricao-{{ forloop.counter0 }}"
+                                     class="flex flex-wrap gap-2" aria-label="Formatação Markdown">
+                                    <button type="button" data-markdown-action="bold" title="Negrito"
+                                            class="rounded border border-border px-3 py-1 text-sm font-bold hover:bg-secondary">B</button>
+                                    <button type="button" data-markdown-action="italic" title="Itálico"
+                                            class="rounded border border-border px-3 py-1 text-sm italic hover:bg-secondary">I</button>
+                                    <button type="button" data-markdown-action="line" title="Inserir linha horizontal"
+                                            class="rounded border border-border px-3 py-1 text-sm hover:bg-secondary">Linha</button>
+                                    <button type="button" data-open-markdown-help aria-label="Ajuda sobre Markdown" title="Como usar Markdown"
+                                            class="inline-flex size-8 items-center justify-center rounded-full border border-border text-sm font-semibold hover:bg-secondary">?</button>
+                                </div>
                                 <textarea id="etapa-descricao-{{ forloop.counter0 }}" name="etapa_descricao"
                                           rows="4" placeholder="Descreva como concluir esta etapa."
                                           class="w-full rounded-md border border-input bg-background px-3 py-2 text-sm text-foreground shadow-sm placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring">{{ etapa.descricao }}</textarea>
+                            </div>
+                            <div class="space-y-2">
+                                <label for="etapa-img-{{ forloop.counter0 }}" class="text-sm font-medium">
+                                    Imagem da etapa (opcional)
+                                </label>
+                                <input id="etapa-img-{{ forloop.counter0 }}" name="etapa_img" type="file" accept="image/*"
+                                       class="w-full rounded-md border border-input bg-background px-3 py-2 text-sm text-foreground shadow-sm file:mr-3 file:rounded-md file:border-0 file:bg-secondary file:px-3 file:py-2 file:text-sm file:font-medium file:text-foreground">
                             </div>
                             {% if etapa.erro %}
                                 <p class="text-sm text-destructive" role="alert">{{ etapa.erro }}</p>
@@ -97,6 +128,33 @@
     </section>
 </main>
 
+<dialog id="ajuda-markdown" aria-labelledby="ajuda-markdown-titulo"
+        class="m-auto w-[calc(100%-2rem)] max-w-lg rounded-lg border border-border bg-card p-0 text-card-foreground shadow-xl backdrop:bg-black/60">
+    <div class="p-6 sm:p-8">
+        <h2 id="ajuda-markdown-titulo" class="text-xl font-semibold">Como formatar com Markdown</h2>
+        <p class="mt-2 text-sm leading-6 text-muted-foreground">
+            Escreva os símbolos abaixo no texto. Eles serão convertidos na formatação quando o detonado for exibido.
+        </p>
+        <ul class="mt-5 space-y-3 text-sm">
+            <li><code class="rounded bg-secondary px-1.5 py-1">**texto**</code> — <strong>negrito</strong></li>
+            <li><code class="rounded bg-secondary px-1.5 py-1">*texto*</code> — <em>itálico</em></li>
+            <li><code class="rounded bg-secondary px-1.5 py-1">---</code> em uma linha — linha divisória</li>
+            <li><code class="rounded bg-secondary px-1.5 py-1">- item</code> — item de lista</li>
+            <li><code class="rounded bg-secondary px-1.5 py-1">[nome](https://exemplo.com)</code> — link</li>
+            <li><code class="rounded bg-secondary px-1.5 py-1"># Título</code> — título de seção</li>
+        </ul>
+        <p class="mt-4 text-xs leading-5 text-muted-foreground">
+            Você também pode selecionar um trecho e usar os botões B e I para aplicar negrito ou itálico.
+        </p>
+        <div class="mt-7 flex justify-end">
+            <button type="button" data-close-markdown-help
+                    class="rounded-md bg-primary px-4 py-2 text-sm font-medium text-primary-foreground hover:bg-primary/90">
+                Entendi
+            </button>
+        </div>
+    </div>
+</dialog>
+
 <template id="modelo-etapa">
     <fieldset class="space-y-3 rounded-lg border border-border p-4">
         <legend class="px-1 text-sm font-medium">Nova etapa</legend>
@@ -108,9 +166,24 @@
         </div>
         <div class="space-y-2">
             <label class="text-sm font-medium" data-label="descricao">Descrição da etapa</label>
+            <div data-markdown-toolbar class="flex flex-wrap gap-2" aria-label="Formatação Markdown">
+                <button type="button" data-markdown-action="bold" title="Negrito"
+                        class="rounded border border-border px-3 py-1 text-sm font-bold hover:bg-secondary">B</button>
+                <button type="button" data-markdown-action="italic" title="Itálico"
+                        class="rounded border border-border px-3 py-1 text-sm italic hover:bg-secondary">I</button>
+                <button type="button" data-markdown-action="line" title="Inserir linha horizontal"
+                        class="rounded border border-border px-3 py-1 text-sm hover:bg-secondary">Linha</button>
+                <button type="button" data-open-markdown-help aria-label="Ajuda sobre Markdown" title="Como usar Markdown"
+                        class="inline-flex size-8 items-center justify-center rounded-full border border-border text-sm font-semibold hover:bg-secondary">?</button>
+            </div>
             <textarea name="etapa_descricao" rows="4"
                       placeholder="Descreva como concluir esta etapa."
                       class="w-full rounded-md border border-input bg-background px-3 py-2 text-sm text-foreground shadow-sm placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"></textarea>
+        </div>
+        <div class="space-y-2">
+            <label class="text-sm font-medium" data-label="imagem">Imagem da etapa (opcional)</label>
+            <input name="etapa_img" type="file" accept="image/*"
+                   class="w-full rounded-md border border-input bg-background px-3 py-2 text-sm text-foreground shadow-sm file:mr-3 file:rounded-md file:border-0 file:bg-secondary file:px-3 file:py-2 file:text-sm file:font-medium file:text-foreground">
         </div>
     </fieldset>
 </template>
@@ -119,6 +192,58 @@
     const listaEtapas = document.getElementById("lista-etapas");
     const modeloEtapa = document.getElementById("modelo-etapa");
     const botaoAdicionarEtapa = document.getElementById("adicionar-etapa");
+    const formularioDetonado = document.querySelector("form");
+    const ajudaMarkdown = document.getElementById("ajuda-markdown");
+
+    formularioDetonado.addEventListener("click", (evento) => {
+        const botaoAjuda = evento.target.closest("[data-open-markdown-help]");
+        if (botaoAjuda) {
+            ajudaMarkdown.showModal();
+            return;
+        }
+
+        const botao = evento.target.closest("[data-markdown-action]");
+        if (!botao) return;
+
+        const barra = botao.closest("[data-markdown-toolbar]");
+        const textarea = barra.dataset.target
+            ? document.getElementById(barra.dataset.target)
+            : barra.parentElement.querySelector("textarea");
+        if (!textarea) return;
+
+        const acao = botao.dataset.markdownAction;
+        const inicio = textarea.selectionStart;
+        const fim = textarea.selectionEnd;
+        const selecionado = textarea.value.slice(inicio, fim);
+        let antes;
+        let depois;
+
+        if (acao === "bold") {
+            antes = "**";
+            depois = "**";
+        } else if (acao === "italic") {
+            antes = "*";
+            depois = "*";
+        } else {
+            antes = "\n\n---\n\n";
+            depois = "";
+        }
+
+        const textoInserido = acao === "line"
+            ? antes
+            : `${antes}${selecionado || "texto"}${depois}`;
+        textarea.setRangeText(textoInserido, inicio, fim, "select");
+        textarea.focus();
+        if (!selecionado && acao !== "line") {
+            textarea.setSelectionRange(inicio + antes.length, inicio + antes.length + 5);
+        }
+    });
+
+    ajudaMarkdown.addEventListener("click", (evento) => {
+        if (evento.target === ajudaMarkdown || evento.target.closest("[data-close-markdown-help]")) {
+            ajudaMarkdown.close();
+        }
+    });
 
     botaoAdicionarEtapa.addEventListener("click", () => {
         const indice = listaEtapas.children.length;
@@ -126,12 +251,16 @@
         const fieldset = novaEtapa.querySelector("fieldset");
         const titulo = novaEtapa.querySelector('input[name="etapa_titulo"]');
         const descricao = novaEtapa.querySelector('textarea[name="etapa_descricao"]');
+        const imagem = novaEtapa.querySelector('input[name="etapa_img"]');
 
         fieldset.querySelector("legend").textContent = `Etapa ${indice + 1}`;
         titulo.id = `etapa-titulo-${indice}`;
         descricao.id = `etapa-descricao-${indice}`;
+        imagem.id = `etapa-img-${indice}`;
+        fieldset.querySelector("[data-markdown-toolbar]").dataset.target = descricao.id;
         fieldset.querySelector('[data-label="titulo"]').htmlFor = titulo.id;
         fieldset.querySelector('[data-label="descricao"]').htmlFor = descricao.id;
+        fieldset.querySelector('[data-label="imagem"]').htmlFor = imagem.id;
         listaEtapas.appendChild(novaEtapa);
         titulo.focus();
     });

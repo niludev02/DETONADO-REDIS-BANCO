@@ -2,3 +2,5 @@ Django==6.1.2
 django-cotton
 Pillow>=10
 redis>=5,<7
+Markdown>=3.7,<4
+nh3>=0.2.18

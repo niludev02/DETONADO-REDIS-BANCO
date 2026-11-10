@@ -126,8 +126,10 @@ class DetonadoForm(forms.Form):
     detonado_img = forms.ImageField(
         label="Imagem do Detonado",
         help_text="Selecione a imagem do detonado.",
+        required=False,
         widget=forms.ClearableFileInput(attrs={"accept": "image/*"}),
     )
+
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
         for campo in self.fields.values():

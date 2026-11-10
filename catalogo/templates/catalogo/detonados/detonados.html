@@ -1,4 +1,5 @@
 {% extends "base.html" %}
+{% load markdown %}
 
 {% block title %}Detonados{% endblock %}
 
@@ -56,9 +57,9 @@
                         <h2 class="text-lg font-semibold tracking-tight transition-colors group-hover:text-primary">
                             {{ detonado.titulo }}
                         </h2>
-                        <p class="mt-2 line-clamp-2 min-h-12 text-sm leading-6 text-muted-foreground">
-                            {{ detonado.descricao }}
-                        </p>
+                        <div class="markdown-content mt-2 line-clamp-2 min-h-12 text-sm leading-6 text-muted-foreground">
+                            {{ detonado.descricao|markdown_safe }}
+                        </div>
 
                         <div class="mt-5 flex items-center justify-between gap-3 border-t border-border pt-4">
                             <p class="line-clamp-1 text-xs text-muted-foreground">

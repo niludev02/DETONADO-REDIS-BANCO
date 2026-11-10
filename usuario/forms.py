@@ -1,4 +1,7 @@
 from django import forms
+from django.contrib.auth import get_user_model
+from django.contrib.auth.password_validation import validate_password
+
 
 class CadastroForm(forms.Form):
     nome = forms.CharField(
@@ -51,6 +54,12 @@ class CadastroForm(forms.Form):
                 "disabled:cursor-not-allowed disabled:opacity-50"
             )
 
+    def clean_email(self):
+        email = (self.cleaned_data.get("email") or "").strip().lower()
+        if email and get_user_model().objects.filter(email__iexact=email).exists():
+            raise forms.ValidationError("Já existe uma conta cadastrada")
+        return email
+
     def clean(self):
         dados = super().clean()
 
@@ -58,7 +67,13 @@ class CadastroForm(forms.Form):
         confirmar_senha = dados.get("confirmar_senha")
 
         if senha and confirmar_senha and senha != confirmar_senha:
-            raise forms.ValidationError("As senhas não coincidem.")
+            raise forms.ValidationError("As senhas não conferem.")
+
+        if senha:
+            try:
+                validate_password(senha)
+            except forms.ValidationError as exc:
+                self.add_error("senha", exc)
 
         return dados
 

@@ -227,6 +227,77 @@ class PerfilTests(TestCase):
         self.assertContains(resposta, "Jogadora Teste")
         self.assertContains(resposta, "jogadora@example.com")
         self.assertContains(resposta, "Administrador")
+        self.assertContains(resposta, reverse("usuarios:administracao_jogos"))
+
+
+class AdministracaoJogosTests(TestCase):
+    def setUp(self):
+        sessao = self.client.session
+        sessao["usuario_id"] = "redis-admin-id"
+        sessao["usuario_is_admin"] = True
+        sessao.save()
+
+    @patch("usuario.views.Jogo.listar")
+    def test_lista_jogos_em_tabela_com_acao_de_excluir(self, listar):
+        listar.return_value = [
+            {
+                "id": "jogo-123",
+                "titulo": "Jogo de teste",
+                "genero": "Aventura",
+                "plataformas": "PC",
+                "status": "ativo",
+                "imagem": "jogos/capa.png",
+            }
+        ]
+
+        resposta = self.client.get(reverse("usuarios:administracao_jogos"))
+
+        self.assertEqual(resposta.status_code, 200)
+        self.assertContains(resposta, "<table")
+        self.assertContains(resposta, "Jogo de teste")
+        self.assertContains(resposta, "Aventura")
+        self.assertContains(resposta, "Plataformas")
+        self.assertContains(resposta, "data-open-delete-game")
+        self.assertContains(resposta, "modal-excluir-jogo")
+        self.assertContains(resposta, "detonados e etapas")
+
+    @patch("usuario.views.Jogo.excluir")
+    @patch("usuario.views.Jogo.obter")
+    def test_admin_exclui_jogo_pelo_post(self, obter, excluir):
+        obter.return_value = {"id": "jogo-123"}
+
+        resposta = self.client.post(
+            reverse("usuarios:excluir_jogo_administracao", args=["jogo-123"])
+        )
+
+        self.assertRedirects(
+            resposta,
+            reverse("usuarios:administracao_jogos"),
+        )
+        excluir.assert_called_once_with("jogo-123")
+
+    @patch("usuario.views.Jogo.excluir")
+    @patch("usuario.views.Jogo.obter")
+    def test_usuario_comum_nao_pode_excluir_jogo(self, obter, excluir):
+        sessao = self.client.session
+        sessao["usuario_is_admin"] = False
+        sessao.save()
+        obter.return_value = {"id": "jogo-123"}
+
+        resposta = self.client.post(
+            reverse("usuarios:excluir_jogo_administracao", args=["jogo-123"])
+        )
+
+        self.assertEqual(resposta.status_code, 403)
+        excluir.assert_not_called()
+
+    @patch("usuario.views.Jogo.obter", return_value=None)
+    def test_exclusao_de_jogo_inexistente_retorna_404(self, obter):
+        resposta = self.client.post(
+            reverse("usuarios:excluir_jogo_administracao", args=["nao-existe"])
+        )
+
+        self.assertEqual(resposta.status_code, 404)
 
 
 class PersonalizacaoPerfilTests(TestCase):

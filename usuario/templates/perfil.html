@@ -33,8 +33,19 @@
                     </a>
                     <a href="{% url 'usuarios:seguranca_perfil' %}"
                        class="rounded-md px-4 py-3 text-base text-muted-foreground transition hover:bg-secondary hover:text-secondary-foreground">
-                        Segurança
+                        Segurança e privacidade
                     </a>
+                    {% if usuario.is_admin == "1" or request.session.usuario_is_admin or request.user.is_staff or request.user.is_superuser %}
+                        <div class="pt-3">
+                            <p class="px-4 pb-2 text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+                                Administração
+                            </p>
+                            <a href="{% url 'usuarios:administracao_jogos' %}"
+                               class="block rounded-md px-4 py-3 text-base text-muted-foreground transition hover:bg-secondary hover:text-secondary-foreground">
+                                Jogos
+                            </a>
+                        </div>
+                    {% endif %}
                 </nav>
             </aside>
 

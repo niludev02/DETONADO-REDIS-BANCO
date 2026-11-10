@@ -1,13 +1,21 @@
+import os
 from uuid import uuid4
 
+from PIL import Image, UnidentifiedImageError
 from django.core.files.storage import default_storage
 from django.http import Http404, HttpResponseForbidden
 from django.shortcuts import redirect, render
-from django.views.decorators.http import require_http_methods
+from django.utils import timezone
+from django.utils.dateparse import parse_datetime
+from django.views.decorators.http import require_http_methods, require_POST
 
 from config.redis_conn import redis_conn
+
+from django.contrib.auth import get_user_model
+
 from .forms import DetonadoForm, JogoEdicaoForm, JogoForm
 from .models import Detonado, Etapa, Jogo
+
 
 def _eh_administrador(request):
     return bool(
@@ -19,19 +27,93 @@ def _eh_administrador(request):
     )
 
 
+def _esta_logado(request):
+    return bool(request.user.is_authenticated or request.session.get("usuario_id"))
+
+
+def _usuario_id(request):
+    """Id do usuário logado como texto (o Redis guarda tudo como str)."""
+    if request.user.is_authenticated:
+        return str(request.user.id)
+    return str(request.session.get("usuario_id", ""))
+
+
+def _pode_editar_detonado(request, detonado):
+    """Administrador edita qualquer um; usuário comum só o próprio."""
+    if _eh_administrador(request):
+        return True
+    autor = detonado.get("autor_id", "")
+    # bool(autor) evita liberar detonados antigos (sem autor) por "" == ""
+    return bool(autor) and autor == _usuario_id(request)
+
+
+def _negar_acesso(request, mensagem):
+    """Não logado -> login. Logado sem permissão -> 403."""
+    if not request.user.is_authenticated and not request.session.get("usuario_id"):
+        return redirect("usuarios:login")
+    return HttpResponseForbidden(mensagem)
+
+
+def _url_imagem(caminho):
+    """Aceita URL externa ou caminho salvo no storage."""
+    if not caminho:
+        return ""
+    if caminho.startswith(("http://", "https://")):
+        return caminho
+    return default_storage.url(caminho)
+
+
+def _salvar_imagem(imagem, pasta):
+    if imagem is None:
+        return ""
+
+    try:
+        imagem_obj = getattr(imagem, "image", None)
+        if imagem_obj is not None:
+            formato = imagem_obj.format.lower()
+        else:
+            imagem.seek(0)
+            with Image.open(imagem) as img:
+                formato = (img.format or "PNG").lower()
+            imagem.seek(0)
+
+        extensao = "jpg" if formato == "jpeg" else formato
+        return default_storage.save(f"{pasta}/{uuid4().hex}.{extensao}", imagem)
+    except (AttributeError, UnidentifiedImageError, ValueError):
+        nome_arquivo = getattr(imagem, "name", "imagem")
+        extensao = os.path.splitext(nome_arquivo)[1].lstrip(".") or "png"
+        extensao = "jpg" if extensao.lower() == "jpeg" else extensao.lower()
+        return default_storage.save(f"{pasta}/{uuid4().hex}.{extensao}", imagem)
+
+
+def _listar_jogos_redis():
+    jogos = []
+    for chave in redis_conn.scan_iter(match="jogo:*"):
+        if chave.endswith(":detonados"):
+            continue
+        dados = redis_conn.hgetall(chave)
+        if dados:
+            jogos.append(dados)
+    return sorted(jogos, key=lambda jogo: jogo.get("titulo", "").lower())
+
+
+def _listar_detonados_redis():
+    detonados = []
+    for chave in redis_conn.scan_iter(match="detonado:*"):
+        if chave.endswith(":etapas"):
+            continue
+        dados = redis_conn.hgetall(chave)
+        if dados:
+            detonados.append(dados)
+    return sorted(
+        detonados, key=lambda detonado: detonado.get("data_detonado", ""), reverse=True
+    )
+
+
 def index(request):
-    jogos = [
-        redis_conn.hgetall(chave)
-        for chave in redis_conn.scan_iter(match="jogo:*")
-        if chave.count(":") == 1
-    ]
-    jogos = [jogo for jogo in jogos if jogo]
+    jogos = _listar_jogos_redis()
     for jogo in jogos:
-        imagem = jogo.get("imagem", "")
-        if imagem.startswith(("http://", "https://")):
-            jogo["imagem_url"] = imagem
-        elif imagem:
-            jogo["imagem_url"] = default_storage.url(imagem)
+        jogo["imagem_url"] = _url_imagem(jogo.get("imagem", ""))
 
     return render(
         request,
@@ -48,28 +130,18 @@ def detalhes_jogo(request, jogo_id):
     if not jogo:
         raise Http404("Jogo não encontrado.")
 
-    detonado_ids = redis_conn.smembers(f"jogo:{jogo_id}:detonados")
     detonados = []
-    for detonado_id in detonado_ids:
+    for detonado_id in redis_conn.smembers(f"jogo:{jogo_id}:detonados"):
         detonado = redis_conn.hgetall(f"detonado:{detonado_id}")
         if not detonado:
             continue
-
-        detonado.setdefault("id", detonado_id)
         detonado["descricao"] = (
             detonado.get("descricao") or detonado.get("conteudo", "")
         )
-        imagem_detonado = detonado.get("detonado_img", "")
-        detonado["detonado_img_url"] = (
-            default_storage.url(imagem_detonado) if imagem_detonado else ""
-        )
+        detonado["detonado_img_url"] = _url_imagem(detonado.get("detonado_img", ""))
         detonados.append(detonado)
 
-    imagem = jogo.get("imagem", "")
-    if imagem.startswith(("http://", "https://")):
-        jogo["imagem_url"] = imagem
-    elif imagem:
-        jogo["imagem_url"] = default_storage.url(imagem)
+    jogo["imagem_url"] = _url_imagem(jogo.get("imagem", ""))
 
     return render(
         request,
@@ -85,9 +157,7 @@ def detalhes_jogo(request, jogo_id):
 @require_http_methods(["GET", "POST"])
 def editar_jogo(request, jogo_id):
     if not _eh_administrador(request):
-        if not request.user.is_authenticated and not request.session.get("usuario_id"):
-            return redirect("usuarios:login")
-        return HttpResponseForbidden("Apenas administradores podem editar jogos.")
+        return _negar_acesso(request, "Apenas administradores podem editar jogos.")
 
     jogo = redis_conn.hgetall(f"jogo:{jogo_id}")
     if not jogo:
@@ -101,15 +171,9 @@ def editar_jogo(request, jogo_id):
 
     if request.method == "POST" and form.is_valid():
         dados = form.cleaned_data
-        imagem = dados["imagem"]
         caminho_imagem = None
-        if imagem:
-            formato = imagem.image.format.lower()
-            extensao = "jpg" if formato == "jpeg" else formato
-            caminho_imagem = default_storage.save(
-                f"jogos/{uuid4().hex}.{extensao}",
-                imagem,
-            )
+        if dados["imagem"]:
+            caminho_imagem = _salvar_imagem(dados["imagem"], "jogos")
 
         Jogo.atualizar(
             jogo_id=jogo_id,
@@ -125,11 +189,7 @@ def editar_jogo(request, jogo_id):
         )
         return redirect("catalogo:detalhes", jogo_id=jogo_id)
 
-    imagem = jogo.get("imagem", "")
-    if imagem.startswith(("http://", "https://")):
-        jogo["imagem_url"] = imagem
-    elif imagem:
-        jogo["imagem_url"] = default_storage.url(imagem)
+    jogo["imagem_url"] = _url_imagem(jogo.get("imagem", ""))
 
     return render(
         request,
@@ -141,9 +201,7 @@ def editar_jogo(request, jogo_id):
 @require_http_methods(["GET", "POST"])
 def criar_jogo(request):
     if not _eh_administrador(request):
-        if not request.user.is_authenticated and not request.session.get("usuario_id"):
-            return redirect("usuarios:login")
-        return HttpResponseForbidden("Apenas administradores podem cadastrar jogos.")
+        return _negar_acesso(request, "Apenas administradores podem cadastrar jogos.")
 
     form = JogoForm(
         request.POST if request.method == "POST" else None,
@@ -152,13 +210,7 @@ def criar_jogo(request):
 
     if request.method == "POST" and form.is_valid():
         dados = form.cleaned_data
-        imagem = dados["imagem"]
-        formato = imagem.image.format.lower()
-        extensao = "jpg" if formato == "jpeg" else formato
-        caminho_imagem = default_storage.save(
-            f"jogos/{uuid4().hex}.{extensao}",
-            imagem,
-        )
+        caminho_imagem = _salvar_imagem(dados["imagem"], "jogos")
         Jogo.criar(
             titulo=dados["titulo"].strip(),
             descricao=dados["descricao"].strip(),
@@ -175,38 +227,30 @@ def criar_jogo(request):
     return render(
         request,
         "catalogo/jogos/criar_jogo.html",
-        {
-            "form_jogo": form,
-        },
+        {"form_jogo": form},
     )
+
 
 def view_detonados(request):
     detonados = []
     for chave in redis_conn.scan_iter(match="detonado:*"):
-        if chave.count(":") != 1:
+        if chave.endswith(":etapas"):
             continue
-
         detonado = redis_conn.hgetall(chave)
         if not detonado:
             continue
 
-        detonado.setdefault("id", chave.split(":", 1)[1])
+        jogo = redis_conn.hgetall(f"jogo:{detonado.get('jogo_id', '')}") if detonado.get("jogo_id") else {}
         detonado["descricao"] = (
             detonado.get("descricao") or detonado.get("conteudo", "")
-        )
-
-        jogo = (
-            redis_conn.hgetall(f"jogo:{detonado['jogo_id']}")
-            if detonado.get("jogo_id")
-            else {}
         )
         detonado["genero"] = detonado.get("genero") or jogo.get("genero", "")
         detonado["plataformas"] = (
             detonado.get("plataformas") or jogo.get("plataformas", "")
         )
-
-        imagem = detonado.get("detonado_img", "")
-        detonado["detonado_img_url"] = default_storage.url(imagem) if imagem else ""
+        detonado["detonado_img_url"] = _url_imagem(
+            detonado.get("detonado_img", "")
+        )
         detonados.append(detonado)
 
     return render(
@@ -214,7 +258,7 @@ def view_detonados(request):
         "catalogo/detonados/detonados.html",
         {
             "detonados": detonados,
-            "pode_criar_detonado": _eh_administrador(request),
+            "pode_criar_detonado": _esta_logado(request),
         },
     )
 
@@ -227,26 +271,53 @@ def detalhes_detonado(request, detonado_id):
     detonado["descricao"] = (
         detonado.get("descricao") or detonado.get("conteudo", "")
     )
-    imagem = detonado.get("detonado_img", "")
-    detonado["detonado_img_url"] = default_storage.url(imagem) if imagem else ""
-    etapa_ids = redis_conn.lrange(f"detonado:{detonado_id}:etapas", 0, -1)
-    etapas = [
-        redis_conn.hgetall(f"etapa:{etapa_id}")
-        for etapa_id in etapa_ids
-    ]
-    etapas = [etapa for etapa in etapas if etapa]
+    detonado["detonado_img_url"] = _url_imagem(detonado.get("detonado_img", ""))
+
+    etapas = []
+    for etapa_id in redis_conn.lrange(f"detonado:{detonado_id}:etapas", 0, -1):
+        etapa = redis_conn.hgetall(f"etapa:{etapa_id}")
+        if etapa:
+            etapa["etapa_img_url"] = _url_imagem(etapa.get("etapa_img", ""))
+            etapas.append(etapa)
+
+    autor_id = detonado.get("autor_id", "")
+    autor = redis_conn.hgetall(f"usuario:{autor_id}") if autor_id else {}
+    autor_nome = autor.get("nome", "")
+    if not autor_nome and autor_id:
+        usuario_model = get_user_model()
+        try:
+            usuario = usuario_model.objects.filter(pk=autor_id).only(
+                "first_name", "username"
+            ).first()
+        except (TypeError, ValueError):
+            usuario = None
+        if usuario:
+            autor_nome = usuario.get_full_name() or usuario.get_username()
+
+    data_criacao = parse_datetime(detonado.get("data_detonado", ""))
+    if data_criacao and timezone.is_naive(data_criacao):
+        data_criacao = timezone.make_aware(data_criacao)
+    if data_criacao:
+        data_criacao = timezone.localtime(data_criacao)
 
     return render(
         request,
         "catalogo/detonados/detonado.html",
-        {"detonado": detonado, "etapas": etapas},
+        {
+            "detonado": detonado,
+            "etapas": etapas,
+            "autor_nome": autor_nome,
+            "data_criacao": data_criacao,
+            "pode_editar": _pode_editar_detonado(request, detonado),
+        },
     )
 
 
 @require_http_methods(["GET", "POST"])
 def criar_detonado(request, jogo_id):
-
     jogo = redis_conn.hgetall(f"jogo:{jogo_id}")
+    if not jogo:
+        raise Http404("Jogo não encontrado.")
     if not jogo:
         raise Http404("Jogo não encontrado.")
 
@@ -256,12 +327,13 @@ def criar_detonado(request, jogo_id):
     )
     etapa_titulos = request.POST.getlist("etapa_titulo")
     etapa_descricoes = request.POST.getlist("etapa_descricao")
+    etapa_imagens = request.FILES.getlist("etapa_img")
     etapas_form = []
     erros_etapas = []
     etapas = []
 
     if request.method == "POST":
-        total_etapas = max(len(etapa_titulos), len(etapa_descricoes), 1)
+        total_etapas = max(len(etapa_titulos), len(etapa_descricoes), len(etapa_imagens), 1)
         for indice in range(total_etapas):
             titulo = etapa_titulos[indice].strip() if indice < len(etapa_titulos) else ""
             descricao = (
@@ -269,13 +341,28 @@ def criar_detonado(request, jogo_id):
                 if indice < len(etapa_descricoes)
                 else ""
             )
+            imagem = (
+                etapa_imagens[indice]
+                if indice < len(etapa_imagens)
+                else None
+            )
             erro = ""
             if len(titulo) > 150:
                 erro = "O título da etapa deve ter no máximo 150 caracteres."
             elif bool(titulo) != bool(descricao):
                 erro = "Preencha o título e a descrição da etapa."
             elif titulo and descricao:
-                etapas.append({"titulo": titulo, "descricao": descricao})
+                etapas.append({
+                    "titulo": titulo,
+                    "descricao": descricao,
+                    "etapa_img": _salvar_imagem(imagem, "detonados/etapas") if imagem else "",
+                })
+            elif imagem:
+                etapas.append({
+                    "titulo": titulo,
+                    "descricao": descricao,
+                    "etapa_img": _salvar_imagem(imagem, "detonados/etapas"),
+                })
             etapas_form.append(
                 {"titulo": titulo, "descricao": descricao, "erro": erro}
             )
@@ -289,19 +376,15 @@ def criar_detonado(request, jogo_id):
 
     if request.method == "POST" and form.is_valid() and not erros_etapas:
         dados = form.cleaned_data
-        imagem = dados["detonado_img"]
-        formato = imagem.image.format.lower()
-        extensao = "jpg" if formato == "jpeg" else formato
-        caminho_imagem = default_storage.save(
-            f"detonados/{uuid4().hex}.{extensao}",
-            imagem,
-        )
+        caminho_imagem = _salvar_imagem(dados.get("detonado_img"), "detonados")
+
         detonado_id = Detonado.criar(
             jogo_id=jogo_id,
             titulo=dados["titulo"].strip(),
             descricao=dados["conteudo"].strip(),
             conteudo=dados["conteudo"].strip(),
             detonado_img=caminho_imagem,
+            autor_id=_usuario_id(request),
         )
         redis_conn.sadd(f"jogo:{jogo_id}:detonados", detonado_id)
         for etapa in etapas:
@@ -309,8 +392,8 @@ def criar_detonado(request, jogo_id):
                 detonado_id=detonado_id,
                 titulo=etapa["titulo"],
                 descricao=etapa["descricao"],
+                etapa_img=etapa.get("etapa_img", ""),
             )
-            redis_conn.rpush(f"detonado:{detonado_id}:etapas", etapa_id)
         return redirect("catalogo:detalhes_detonado", detonado_id=detonado_id)
 
     return render(
@@ -324,32 +407,219 @@ def criar_detonado(request, jogo_id):
         },
     )
 
+
+@require_http_methods(["GET", "POST"])
 def editar_detonado(request, jogo_id, detonado_id):
-    jogo = redis_conn.hgetall(f"jogo:{jogo_id}")
+    if not _esta_logado(request):
+        return redirect("usuarios:login")
+
+    jogo = Jogo.obter(jogo_id)
     if not jogo:
         raise Http404("Jogo não encontrado.")
 
-    detonado = redis_conn.hgetall(f"detonado:{detonado_id}")
+    detonado = Detonado.obter(detonado_id)
     if not detonado or detonado.get("jogo_id") != jogo_id:
         raise Http404("Detonado não encontrado.")
 
-    if request.method == "POST":
-        titulo = request.POST.get("titulo", "").strip()
-        conteudo = request.POST.get("conteudo", "").strip()
+    if not _pode_editar_detonado(request, detonado):
+        return HttpResponseForbidden("Você só pode editar os seus detonados.")
 
-        if titulo and conteudo:
-            dados_detonado = {
-                "titulo": titulo,
-                "conteudo": conteudo,
-            }
-            redis_conn.hset(
-                f"detonado:{detonado_id}",
-                mapping=dados_detonado
+    etapas_existentes = detonado.get("etapas", [])
+    etapas_por_id = {etapa["id"]: etapa for etapa in etapas_existentes if etapa.get("id")}
+    form = DetonadoForm(
+        request.POST if request.method == "POST" else None,
+        request.FILES if request.method == "POST" else None,
+        initial={
+            "titulo": detonado.get("titulo", ""),
+            "conteudo": detonado.get("conteudo") or detonado.get("descricao", ""),
+        },
+    )
+    erros_etapas = []
+    etapas_form = []
+    etapas_atualizadas = []
+
+    if request.method == "POST":
+        ids = request.POST.getlist("etapa_id")
+        titulos = request.POST.getlist("etapa_titulo")
+        descricoes = request.POST.getlist("etapa_descricao")
+        imagens = [
+            request.FILES.get(f"etapa_img_{indice}")
+            for indice in range(max(len(ids), len(titulos), len(descricoes)))
+        ]
+        remover_imagens = set(request.POST.getlist("remover_etapa_img"))
+        total_etapas = max(len(ids), len(titulos), len(descricoes), len(imagens))
+        ids_enviados = [etapa_id for etapa_id in ids if etapa_id]
+
+        if len(ids_enviados) != len(set(ids_enviados)) or any(
+            etapa_id not in etapas_por_id for etapa_id in ids_enviados
+        ):
+            erros_etapas.append("Uma ou mais etapas enviadas são inválidas.")
+
+        for indice in range(total_etapas):
+            etapa_id = ids[indice].strip() if indice < len(ids) else ""
+            titulo_etapa = titulos[indice].strip() if indice < len(titulos) else ""
+            descricao_etapa = (
+                descricoes[indice].strip() if indice < len(descricoes) else ""
             )
-            return redirect("catalogo:detalhes", jogo_id=jogo_id)
+            imagem = imagens[indice] if indice < len(imagens) else None
+            etapa_existente = etapas_por_id.get(etapa_id) if etapa_id else None
+            erro_etapa = ""
+
+            if len(titulo_etapa) > 150:
+                erro_etapa = "O título da etapa deve ter no máximo 150 caracteres."
+            elif bool(titulo_etapa) != bool(descricao_etapa):
+                erro_etapa = "Preencha o título e a descrição da etapa."
+            elif not titulo_etapa and not descricao_etapa and not imagem:
+                erro_etapa = "Preencha esta etapa ou remova-a."
+            else:
+                caminho_imagem = (
+                    ""
+                    if etapa_id in remover_imagens
+                    else (etapa_existente or {}).get("etapa_img", "")
+                )
+                etapas_atualizadas.append(
+                    {
+                        "id": etapa_id,
+                        "titulo": titulo_etapa,
+                        "descricao": descricao_etapa,
+                        "imagem": imagem,
+                        "etapa_img": caminho_imagem,
+                        "imagem_anterior": (etapa_existente or {}).get(
+                            "etapa_img", ""
+                        ),
+                    }
+                )
+
+            etapas_form.append(
+                {
+                    "id": etapa_id,
+                    "titulo": titulo_etapa,
+                    "descricao": descricao_etapa,
+                    "etapa_img_url": _url_imagem(
+                        (etapa_existente or {}).get("etapa_img", "")
+                    ),
+                    "remover_imagem": etapa_id in remover_imagens,
+                    "erro": erro_etapa,
+                }
+            )
+            if erro_etapa:
+                erros_etapas.append(erro_etapa)
+
+        if not etapas_atualizadas:
+            erros_etapas.append("Adicione pelo menos uma etapa completa.")
+        if len(ids_enviados) != len(set(ids_enviados)) or any(
+            etapa_id not in etapas_por_id for etapa_id in ids_enviados
+        ):
+            etapas_atualizadas = []
+
+        if form.is_valid() and not erros_etapas:
+            dados = form.cleaned_data
+            imagem_detonado = dados.get("detonado_img")
+            imagem_anterior = detonado.get("detonado_img", "")
+            if imagem_detonado:
+                caminho_detonado = _salvar_imagem(imagem_detonado, "detonados")
+            elif request.POST.get("remover_detonado_img"):
+                caminho_detonado = ""
+            else:
+                caminho_detonado = imagem_anterior
+
+            Detonado.atualizar(
+                detonado_id,
+                titulo=dados["titulo"].strip(),
+                descricao=dados["conteudo"].strip(),
+                conteudo=dados["conteudo"].strip(),
+                detonado_img=caminho_detonado,
+            )
+
+            ids_mantidos = {
+                etapa["id"] for etapa in etapas_atualizadas if etapa["id"]
+            }
+            for etapa_existente in etapas_existentes:
+                etapa_id = etapa_existente.get("id")
+                if etapa_id and etapa_id not in ids_mantidos:
+                    Etapa.excluir(etapa_id)
+
+            for etapa in etapas_atualizadas:
+                caminho_imagem = etapa["etapa_img"]
+                imagem_anterior_etapa = etapa["imagem_anterior"]
+                if etapa["imagem"]:
+                    caminho_imagem = _salvar_imagem(
+                        etapa["imagem"], "detonados/etapas"
+                    )
+                elif etapa["id"] in remover_imagens:
+                    caminho_imagem = ""
+
+                if etapa["id"]:
+                    Etapa.atualizar(
+                        etapa["id"],
+                        etapa["titulo"],
+                        etapa["descricao"],
+                        etapa_img=caminho_imagem,
+                    )
+                else:
+                    Etapa.criar(
+                        detonado_id=detonado_id,
+                        titulo=etapa["titulo"],
+                        descricao=etapa["descricao"],
+                        etapa_img=caminho_imagem,
+                    )
+
+                if (
+                    imagem_anterior_etapa
+                    and imagem_anterior_etapa != caminho_imagem
+                    and not imagem_anterior_etapa.startswith(("http://", "https://"))
+                ):
+                    default_storage.delete(imagem_anterior_etapa)
+
+            if (
+                imagem_anterior
+                and imagem_anterior != caminho_detonado
+                and not imagem_anterior.startswith(("http://", "https://"))
+            ):
+                default_storage.delete(imagem_anterior)
+            return redirect("catalogo:detalhes_detonado", detonado_id=detonado_id)
+    else:
+        for etapa in etapas_existentes:
+            etapas_form.append(
+                {
+                    **etapa,
+                    "etapa_img_url": _url_imagem(etapa.get("etapa_img", "")),
+                    "erro": "",
+                }
+            )
+        if not etapas_form:
+            etapas_form.append(
+                {"id": "", "titulo": "", "descricao": "", "etapa_img_url": "", "erro": ""}
+            )
 
     return render(
         request,
         "catalogo/detonados/editar_detonado.html",
-        {"jogo": jogo, "detonado": detonado},
+        {
+            "jogo": jogo,
+            "detonado": detonado,
+            "form_detonado": form,
+            "etapas_form": etapas_form,
+            "erros_etapas": erros_etapas,
+            "imagem_detonado_url": _url_imagem(detonado.get("detonado_img", "")),
+            "remover_detonado_img": "1" in request.POST.getlist(
+                "remover_detonado_img"
+            ),
+        },
     )
+
+
+@require_POST
+def excluir_detonado(request, detonado_id):
+    detonado = redis_conn.hgetall(f"detonado:{detonado_id}")
+    if not detonado:
+        raise Http404("Detonado não encontrado.")
+
+    if not _pode_editar_detonado(request, detonado):
+        return _negar_acesso(request, "Você não pode excluir este detonado.")
+
+    jogo_id = detonado.get("jogo_id", "")
+    Detonado.excluir(detonado_id)
+    if jogo_id and redis_conn.exists(f"jogo:{jogo_id}"):
+        return redirect("catalogo:detalhes", jogo_id=jogo_id)
+    return redirect("catalogo:detonados")

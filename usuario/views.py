@@ -9,14 +9,26 @@ from django.contrib.auth.hashers import check_password, make_password
 from django.core.exceptions import ValidationError
 from django.core.files.storage import default_storage
 from django.forms import EmailField
+from django.http import Http404, HttpResponseForbidden
 from django.shortcuts import redirect, render
 from django.utils.text import slugify
 from django.utils.http import url_has_allowed_host_and_scheme
 from django.views.decorators.http import require_http_methods, require_POST
 from uuid import uuid4
 
+from catalogo.models import Jogo
 from .forms import CadastroForm, PersonalizacaoPerfilForm
 from config.redis_conn import redis_conn
+
+
+def _eh_administrador(request):
+    return bool(
+        request.session.get("usuario_is_admin")
+        or (
+            request.user.is_authenticated
+            and (request.user.is_staff or request.user.is_superuser)
+        )
+    )
 
 
 @require_http_methods(["GET", "POST"])
@@ -101,30 +113,34 @@ def cadastro_view(request):
         nome = form.cleaned_data["nome"].strip()
         email = form.cleaned_data["email"].strip().lower()
         senha = form.cleaned_data["senha"]
+
+        usuario_model = get_user_model()
+        usuario = usuario_model.objects.create_user(
+            username=slugify(nome)[:30] or "usuario",
+            email=email,
+            password=senha,
+            first_name=nome,
+        )
+
+        usuario_id = str(usuario.pk)
         email_key = f"usuario:email:{email}"
-        usuario_existente_id = redis_conn.get(email_key)
+        redis_conn.hset(
+            f"usuario:{usuario_id}",
+            mapping={
+                "id": usuario_id,
+                "nome": nome,
+                "email": email,
+                "senha": make_password(senha),
+            },
+        )
+        redis_conn.set(email_key, usuario_id)
 
-        if usuario_existente_id and redis_conn.exists(
-            f"usuario:{usuario_existente_id}"
-        ):
-            form.add_error("email", "E-mail já cadastrado.")
-        else:
-            if usuario_existente_id:
-                redis_conn.delete(email_key)
+        autenticado = authenticate(request, username=usuario.username, password=senha)
+        if autenticado is not None:
+            auth_login(request, autenticado)
 
-            usuario_id = str(uuid4())
-            redis_conn.hset(
-                f"usuario:{usuario_id}",
-                mapping={
-                    "id": usuario_id,
-                    "nome": nome,
-                    "email": email,
-                    "senha": make_password(senha),
-                },
-            )
-            redis_conn.set(email_key, usuario_id)
-            request.session["cadastro_sucesso"] = True
-            return redirect("usuarios:login")
+        request.session["cadastro_sucesso"] = True
+        return redirect("home:index")
 
     erros = [
         str(erro)
@@ -232,6 +248,38 @@ def perfil_view(request):
 
 
 @require_http_methods(["GET", "POST"])
+def administracao_jogos(request):
+    if not _eh_administrador(request):
+        if not request.user.is_authenticated and not request.session.get("usuario_id"):
+            return redirect("usuarios:login")
+        return HttpResponseForbidden("Apenas administradores podem gerenciar jogos.")
+
+    jogos = Jogo.listar()
+    for jogo in jogos:
+        imagem = jogo.get("imagem", "")
+        jogo["imagem_url"] = default_storage.url(imagem) if imagem else ""
+
+    return render(
+        request,
+        "administracao/jogos.html",
+        {"jogos": jogos},
+    )
+
+
+@require_POST
+def excluir_jogo_administracao(request, jogo_id):
+    if not _eh_administrador(request):
+        if not request.user.is_authenticated and not request.session.get("usuario_id"):
+            return redirect("usuarios:login")
+        return HttpResponseForbidden("Apenas administradores podem excluir jogos.")
+
+    if not Jogo.obter(jogo_id):
+        raise Http404("Jogo não encontrado.")
+
+    Jogo.excluir(jogo_id)
+    return redirect("usuarios:administracao_jogos")
+
+
 def personalização_perfil(request):
     usuario_id = request.session.get("usuario_id")
     if not usuario_id:
