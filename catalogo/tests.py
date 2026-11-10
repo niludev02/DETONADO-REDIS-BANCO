@@ -11,6 +11,49 @@ from django.urls import reverse
 
 class CriarJogoTests(TestCase):
     @patch("catalogo.views.redis_conn")
+    def test_busca_por_jogo_tambem_encontra_detonado_relacionado(self, redis):
+        jogos = {
+            "jogo:game-123": {
+                "id": "game-123",
+                "titulo": "The Legend of Zelda",
+                "descricao": "Aventura",
+                "imagem": "jogos/zelda.jpg",
+            },
+            "jogo:game-456": {
+                "id": "game-456",
+                "titulo": "Uncharted",
+                "descricao": "Aventura",
+                "imagem": "",
+            },
+        }
+        detonados = {
+            "detonado:guide-123": {
+                "id": "guide-123",
+                "jogo_id": "game-123",
+                "titulo": "Guia completo",
+                "descricao": "**Passo a passo**",
+                "conteudo": "Como explorar Hyrule",
+            },
+        }
+        redis.scan_iter.side_effect = lambda match: {
+            "jogo:*": list(jogos),
+            "detonado:*": list(detonados),
+        }[match]
+        redis.hgetall.side_effect = {**jogos, **detonados}.get
+
+        resposta = self.client.get(
+            reverse("catalogo:index"), {"q": "zelda", "tipo": "todos"}
+        )
+
+        self.assertEqual(resposta.status_code, 200)
+        self.assertContains(resposta, "The Legend of Zelda")
+        self.assertContains(resposta, "Guia completo")
+        self.assertContains(resposta, 'alt="Capa de The Legend of Zelda"')
+        self.assertContains(resposta, "<strong>Passo a passo</strong>", html=True)
+        self.assertNotContains(resposta, "**Passo a passo**")
+        self.assertNotContains(resposta, "Uncharted")
+
+    @patch("catalogo.views.redis_conn")
     def test_catalogo_ignora_chaves_auxiliares_de_detonados(self, redis):
         redis.scan_iter.return_value = [
             "jogo:game-123",

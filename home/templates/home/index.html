@@ -27,8 +27,16 @@
             </p>
 
             <form action="{% url 'catalogo:index' %}" method="get"
-                  class="mt-10 flex w-full max-w-2xl items-center gap-3 rounded-xl border border-border bg-card p-2 transition focus-within:border-primary">
-                <svg aria-hidden="true" focusable="false" class="ml-3 size-5 shrink-0 text-muted-foreground"
+                class="ml-4 mt-10 flex w-full max-w-2xl items-center gap-2 rounded-xl border border-border bg-card p-2 transition focus-within:border-primary">
+                <label for="tipo-busca" class="sr-only">Pesquisar em</label>
+                <select id="tipo-busca" name="tipo"
+                        class="h-11 shrink-0 border-r border-border bg-transparent px-3 text-sm text-foreground outline-none">
+                    <option value="todos">Tudo</option>
+                    <option value="jogos">Jogos</option>
+                    <option value="detonados">Detonados</option>
+                </select>
+
+                <svg aria-hidden="true" focusable="false" class="size-5 shrink-0 text-muted-foreground"
                      xmlns="http://www.w3.org/2000/svg" fill="none"
                      viewBox="0 0 24 24" stroke="currentColor">
                     <circle cx="11" cy="11" r="7" stroke-width="1.8"/>
@@ -39,12 +47,13 @@
                     type="search"
                     name="q"
                     aria-label="Buscar jogos, detonados ou conteúdos"
-                    placeholder="Busque por jogos, detonados ou conteúdos..."
+                    placeholder="Busque jogos ou detonados..."
                     class="h-11 min-w-0 flex-1 bg-transparent text-sm text-foreground outline-none placeholder:text-muted-foreground"
                 >
 
                 <button type="submit"
-                        class="rounded-lg bg-primary px-5 py-3 text-sm font-semibold text-primary-foreground transition hover:bg-primary/90">
+                    aria-label="Buscar"
+                    class="rounded-lg bg-primary p-3 text-sm font-semibold text-primary-foreground transition hover:bg-primary/90">
                     <svg aria-hidden="true" focusable="false" class="size-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
                     <circle cx="11" cy="11" r="7"></circle>
                     <path d="m20 20-4-4"></path>

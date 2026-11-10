@@ -1,14 +1,15 @@
 {% extends "base.html" %}
+{% load markdown %}
 
 {% block title %} Catálogo {% endblock %}
 
 {% block content %}
 
-<main class="mx-auto max-w-6xl space-y-6 p-6">
-    <section class="flex flex-wrap items-center justify-between gap-4 rounded-lg border border-border bg-card p-6">
-        <div>
-            <h1 class="text-2xl font-semibold">Jogos</h1>
-            <p class="mt-2 text-base text-muted-foreground">Explore os jogos e encontre guias da comunidade.</p>
+<main class="mx-auto max-w-6xl space-y-8 p-6">
+    <section class="flex flex-col gap-5 rounded-xl border border-border bg-card p-5 sm:flex-row sm:items-center sm:justify-between sm:p-6">
+        <div class="min-w-0">
+            <h1 class="text-2xl font-semibold leading-tight">Jogos</h1>
+            <p class="mt-2 max-w-xl text-sm leading-6 text-muted-foreground sm:text-base">Explore os jogos e encontre guias da comunidade.</p>
         </div>
         {% if pode_criar_jogo %}
             <a href="{% url 'catalogo:criar' %}"
@@ -18,7 +19,36 @@
         {% endif %}
     </section>
 
+        <form action="{% url 'catalogo:index' %}" method="get"
+                    class="flex w-full max-w-3xl items-center gap-2 rounded-xl border border-border bg-card p-1.5 transition focus-within:border-primary"
+          role="search">
+        <input type="hidden" name="tipo" value="jogos">
+        <label for="busca-jogos" class="sr-only">Buscar jogos</label>
+        <input id="busca-jogos" type="search" name="q" value="{{ consulta }}"
+               placeholder="Buscar jogos por título, descrição ou plataforma"
+                             class="h-11 min-w-0 flex-1 bg-transparent px-2 text-sm text-foreground outline-none placeholder:text-muted-foreground">
+        <button type="submit" aria-label="Buscar jogos"
+                class="rounded-lg bg-primary p-3 text-primary-foreground transition hover:bg-primary/90">
+            <svg aria-hidden="true" class="size-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+                <circle cx="11" cy="11" r="7"></circle>
+                <path d="m20 20-4-4"></path>
+            </svg>
+        </button>
+    </form>
+
+    {% if consulta %}
+        <p class="text-sm text-muted-foreground" aria-live="polite">
+            Resultados para <strong class="text-foreground">{{ consulta }}</strong>
+        </p>
+    {% endif %}
+
+    {% if jogos %}
     <section aria-label="Lista de jogos">
+        {% if consulta %}
+            <h2 class="mb-4 text-xl font-semibold">
+                {% if tipo == "todos" %}Tudo{% else %}Jogos{% endif %}
+            </h2>
+        {% endif %}
         <div class="grid gap-5 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
             {% for jogo in jogos %}
                 <a href="{% url 'catalogo:detalhes' jogo.id %}"
@@ -74,10 +104,56 @@
                         </div>
                     </div>
                 </a>
-            {% empty %}
-                <p class="rounded-lg border border-border bg-card p-6 text-sm text-muted-foreground">Nenhum jogo encontrado.</p>
             {% endfor %}
         </div>
     </section>
+    {% elif not consulta and tipo != "detonados" %}
+        <p class="rounded-lg border border-border bg-card p-6 text-sm text-muted-foreground">Nenhum jogo encontrado.</p>
+    {% endif %}
+
+    {% if detonados %}
+    <section aria-label="Resultados de detonados">
+        <h2 class="mb-4 text-xl font-semibold">Detonados</h2>
+        <div class="grid gap-5 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
+            {% for detonado in detonados %}
+                <a href="{% url 'catalogo:detalhes_detonado' detonado.id %}"
+                   aria-label="Ver detalhes de {{ detonado.titulo }}"
+                   class="group flex h-full flex-col overflow-hidden rounded-xl border border-border bg-card transition duration-200 hover:-translate-y-1 hover:border-primary/60 hover:shadow-xl hover:shadow-primary/10 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring">
+                    <div class="relative aspect-video overflow-hidden bg-gradient-to-br from-primary/20 via-secondary to-background">
+                        {% if detonado.detonado_img_url %}
+                            <img src="{{ detonado.detonado_img_url }}" alt="Capa de {{ detonado.jogo_titulo|default:detonado.titulo }}"
+                                 class="size-full object-cover transition duration-300 group-hover:scale-105">
+                        {% else %}
+                            <div class="flex size-full items-center justify-center text-primary/50">
+                                <svg aria-hidden="true" class="size-12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.2" stroke-linecap="round" stroke-linejoin="round">
+                                    <rect x="3" y="3" width="18" height="18" rx="3"></rect>
+                                    <circle cx="8.5" cy="8.5" r="1.5"></circle>
+                                    <path d="m21 15-5-5L5 21"></path>
+                                </svg>
+                            </div>
+                        {% endif %}
+                    </div>
+                    <div class="flex flex-1 flex-col p-5">
+                    {% if detonado.jogo_titulo %}
+                        <p class="mb-2 text-xs font-medium text-primary">{{ detonado.jogo_titulo }}</p>
+                    {% endif %}
+                    <h3 class="text-lg font-semibold tracking-tight transition-colors group-hover:text-primary">
+                        {{ detonado.titulo }}
+                    </h3>
+                    <div class="markdown-content mt-2 line-clamp-3 text-sm leading-6 text-muted-foreground">
+                        {{ detonado.descricao|default:detonado.conteudo|markdown_safe }}
+                    </div>
+                    </div>
+                </a>
+            {% endfor %}
+        </div>
+    </section>
+    {% endif %}
+
+    {% if consulta and not jogos and not detonados %}
+        <p class="rounded-lg border border-border bg-card p-6 text-sm text-muted-foreground">
+            Nenhum jogo ou detonado encontrado para essa busca.
+        </p>
+    {% endif %}
 </main>
 {% endblock %}

@@ -53,6 +53,7 @@
     --font-weight-bold: 700;
     --tracking-tight: -0.025em;
     --tracking-wide: 0.025em;
+    --leading-tight: 1.25;
     --leading-relaxed: 1.625;
     --radius-2xl: 1rem;
     --aspect-video: 16 / 9;
@@ -214,6 +215,17 @@
   .pointer-events-none {
     pointer-events: none;
   }
+  .sr-only {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    padding: 0;
+    margin: -1px;
+    overflow: hidden;
+    clip-path: inset(50%);
+    white-space: nowrap;
+    border-width: 0;
+  }
   .absolute {
     position: absolute;
   }
@@ -307,6 +319,9 @@
   .mb-3 {
     margin-bottom: calc(var(--spacing) * 3);
   }
+  .mb-4 {
+    margin-bottom: calc(var(--spacing) * 4);
+  }
   .mb-5 {
     margin-bottom: calc(var(--spacing) * 5);
   }
@@ -319,8 +334,8 @@
   .mb-8 {
     margin-bottom: calc(var(--spacing) * 8);
   }
-  .ml-3 {
-    margin-left: calc(var(--spacing) * 3);
+  .ml-4 {
+    margin-left: calc(var(--spacing) * 4);
   }
   .line-clamp-1 {
     overflow: hidden;
@@ -504,6 +519,9 @@
   .flex-wrap {
     flex-wrap: wrap;
   }
+  .items-baseline {
+    align-items: baseline;
+  }
   .items-center {
     align-items: center;
   }
@@ -541,6 +559,11 @@
     --tw-space-y-reverse: 0;
     margin-block-start: calc(var(--spacing) * var(--tw-space-y-reverse));
     margin-block-end: calc(var(--spacing) * calc(1 - var(--tw-space-y-reverse)));
+  }
+  :where(.space-y-1\.5 > :not(:last-child)) {
+    --tw-space-y-reverse: 0;
+    margin-block-start: calc(calc(var(--spacing) * 1.5) * var(--tw-space-y-reverse));
+    margin-block-end: calc(calc(var(--spacing) * 1.5) * calc(1 - var(--tw-space-y-reverse)));
   }
   :where(.space-y-2 > :not(:last-child)) {
     --tw-space-y-reverse: 0;
@@ -636,6 +659,10 @@
   .border-t {
     border-top-style: var(--tw-border-style);
     border-top-width: 1px;
+  }
+  .border-r {
+    border-right-style: var(--tw-border-style);
+    border-right-width: 1px;
   }
   .border-b {
     border-bottom-style: var(--tw-border-style);
@@ -834,8 +861,14 @@
   .p-0 {
     padding: 0px;
   }
+  .p-1\.5 {
+    padding: calc(var(--spacing) * 1.5);
+  }
   .p-2 {
     padding: calc(var(--spacing) * 2);
+  }
+  .p-3 {
+    padding: calc(var(--spacing) * 3);
   }
   .p-4 {
     padding: calc(var(--spacing) * 4);
@@ -893,6 +926,9 @@
   }
   .py-4 {
     padding-block: calc(var(--spacing) * 4);
+  }
+  .py-6 {
+    padding-block: calc(var(--spacing) * 6);
   }
   .py-8 {
     padding-block: calc(var(--spacing) * 8);
@@ -990,6 +1026,10 @@
   .leading-relaxed {
     --tw-leading: var(--leading-relaxed);
     line-height: var(--leading-relaxed);
+  }
+  .leading-tight {
+    --tw-leading: var(--leading-tight);
+    line-height: var(--leading-tight);
   }
   .font-bold {
     --tw-font-weight: var(--font-weight-bold);
@@ -1363,6 +1403,9 @@
       }
     }
   }
+  .focus\:border-primary:focus {
+    border-color: var(--primary);
+  }
   .focus\:border-violet-500:focus {
     border-color: var(--color-violet-500);
   }
@@ -1414,6 +1457,15 @@
     }
     .sm\:grid-cols-2 {
       grid-template-columns: repeat(2, minmax(0, 1fr));
+    }
+    .sm\:flex-row {
+      flex-direction: row;
+    }
+    .sm\:items-center {
+      align-items: center;
+    }
+    .sm\:justify-between {
+      justify-content: space-between;
     }
     .sm\:gap-6 {
       gap: calc(var(--spacing) * 6);
@@ -1470,11 +1522,31 @@
     }
   }
   @media (width >= 64rem) {
+    .lg\:sticky {
+      position: sticky;
+    }
+    .lg\:top-6 {
+      top: calc(var(--spacing) * 6);
+    }
     .lg\:grid-cols-3 {
       grid-template-columns: repeat(3, minmax(0, 1fr));
     }
+    .lg\:grid-cols-\[15rem_minmax\(0\,1fr\)\] {
+      grid-template-columns: 15rem minmax(0,1fr);
+    }
     .lg\:grid-cols-\[minmax\(0\,1fr\)_280px\] {
       grid-template-columns: minmax(0,1fr) 280px;
+    }
+    .lg\:items-start {
+      align-items: flex-start;
+    }
+    .lg\:border-r {
+      border-right-style: var(--tw-border-style);
+      border-right-width: 1px;
+    }
+    .lg\:border-b-0 {
+      border-bottom-style: var(--tw-border-style);
+      border-bottom-width: 0px;
     }
     .lg\:px-8 {
       padding-inline: calc(var(--spacing) * 8);
@@ -1482,8 +1554,17 @@
     .lg\:py-12 {
       padding-block: calc(var(--spacing) * 12);
     }
+    .lg\:pr-6 {
+      padding-right: calc(var(--spacing) * 6);
+    }
+    .lg\:pb-0 {
+      padding-bottom: 0px;
+    }
   }
   @media (width >= 80rem) {
+    .xl\:grid-cols-3 {
+      grid-template-columns: repeat(3, minmax(0, 1fr));
+    }
     .xl\:grid-cols-4 {
       grid-template-columns: repeat(4, minmax(0, 1fr));
     }

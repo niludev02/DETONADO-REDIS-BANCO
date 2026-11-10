@@ -8,7 +8,7 @@
 <main class="mx-auto max-w-6xl space-y-6 p-6">
     <section class="flex flex-wrap items-center justify-between gap-4 rounded-lg border border-border bg-card p-6">
         <div>
-            <h1 class="text-2xl font-semibold">Jogos e detonados</h1>
+            <h1 class="text-2xl font-semibold">Detonados</h1>
             <p class="mt-2 text-base text-muted-foreground">Explore os guias da comunidade para seus jogos favoritos.</p>
         </div>
         {% if pode_criar_detonado %}
@@ -19,8 +19,87 @@
         {% endif %}
     </section>
 
-    <section aria-label="Lista de detonados">
-        <div class="grid gap-5 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
+    <form action="{% url 'catalogo:detonados' %}" method="get"
+          class="flex w-full max-w-2xl items-center gap-3 rounded-xl border border-border bg-card p-2 transition focus-within:border-primary"
+          role="search">
+                {% if filtro_jogo %}<input type="hidden" name="jogo" value="{{ filtro_jogo }}">{% endif %}
+                {% if filtro_genero %}<input type="hidden" name="genero" value="{{ filtro_genero }}">{% endif %}
+                {% if filtro_plataforma %}<input type="hidden" name="plataforma" value="{{ filtro_plataforma }}">{% endif %}
+        <label for="busca-detonados" class="sr-only">Buscar detonados</label>
+        <input id="busca-detonados" type="search" name="q" value="{{ consulta }}"
+               placeholder="Buscar detonados por título, conteúdo ou jogo"
+               class="h-11 min-w-0 flex-1 bg-transparent px-3 text-sm text-foreground outline-none placeholder:text-muted-foreground">
+        <button type="submit" aria-label="Buscar detonados"
+                class="rounded-lg bg-primary p-3 text-primary-foreground transition hover:bg-primary/90">
+            <svg aria-hidden="true" class="size-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+                <circle cx="11" cy="11" r="7"></circle>
+                <path d="m20 20-4-4"></path>
+            </svg>
+        </button>
+    </form>
+
+    {% if consulta %}
+        <p class="text-sm text-muted-foreground" aria-live="polite">
+            Resultados para <strong class="text-foreground">{{ consulta }}</strong>
+        </p>
+    {% endif %}
+
+    <div class="grid gap-8 lg:grid-cols-[15rem_minmax(0,1fr)] lg:items-start">
+        <aside aria-labelledby="titulo-filtros" class="space-y-5 border-b border-border pb-6 lg:sticky lg:top-6 lg:border-b-0 lg:border-r lg:pb-0 lg:pr-6">
+            <div>
+                <h2 id="titulo-filtros" class="text-lg font-semibold">Filtros</h2>
+                <p class="mt-1 text-sm text-muted-foreground">Refine os guias por jogo, gênero ou plataforma.</p>
+            </div>
+
+            <form action="{% url 'catalogo:detonados' %}" method="get" class="space-y-4">
+                {% if consulta %}<input type="hidden" name="q" value="{{ consulta }}">{% endif %}
+
+                <label for="filtro-jogo" class="block space-y-1.5">
+                    <span class="text-sm font-medium">Jogo</span>
+                    <select id="filtro-jogo" name="jogo" class="h-10 w-full rounded-md border border-border bg-background px-3 text-sm text-foreground outline-none focus:border-primary">
+                        <option value="">Todos os jogos</option>
+                        {% for jogo_id, jogo_titulo in jogos_disponiveis %}
+                            <option value="{{ jogo_id }}" {% if filtro_jogo == jogo_id %}selected{% endif %}>{{ jogo_titulo }}</option>
+                        {% endfor %}
+                    </select>
+                </label>
+
+                <label for="filtro-genero" class="block space-y-1.5">
+                    <span class="text-sm font-medium">Gênero</span>
+                    <select id="filtro-genero" name="genero" class="h-10 w-full rounded-md border border-border bg-background px-3 text-sm text-foreground outline-none focus:border-primary">
+                        <option value="">Todos</option>
+                        {% for genero in generos_disponiveis %}
+                            <option value="{{ genero }}" {% if filtro_genero == genero %}selected{% endif %}>{{ genero }}</option>
+                        {% endfor %}
+                    </select>
+                </label>
+
+                <label for="filtro-plataforma" class="block space-y-1.5">
+                    <span class="text-sm font-medium">Plataforma</span>
+                    <select id="filtro-plataforma" name="plataforma" class="h-10 w-full rounded-md border border-border bg-background px-3 text-sm text-foreground outline-none focus:border-primary">
+                        <option value="">Todas</option>
+                        {% for plataforma in plataformas_disponiveis %}
+                            <option value="{{ plataforma }}" {% if filtro_plataforma == plataforma %}selected{% endif %}>{{ plataforma }}</option>
+                        {% endfor %}
+                    </select>
+                </label>
+
+                <button type="submit" class="w-full rounded-md bg-primary px-4 py-2.5 text-sm font-medium text-primary-foreground transition hover:bg-primary/90">
+                    Aplicar filtros
+                </button>
+                <a href="{% url 'catalogo:detonados' %}{% if consulta %}?q={{ consulta|urlencode }}{% endif %}"
+                   class="block text-center text-sm text-muted-foreground transition hover:text-foreground">
+                    Limpar filtros
+                </a>
+            </form>
+        </aside>
+
+        <section aria-label="Lista de detonados" class="min-w-0">
+            <div class="mb-4 flex items-baseline justify-between gap-4">
+                <h2 class="text-lg font-semibold">Resultados</h2>
+                <p class="text-sm text-muted-foreground">{{ detonados|length }} guia{{ detonados|length|pluralize }}</p>
+            </div>
+            <div class="grid gap-5 sm:grid-cols-2 xl:grid-cols-3">
             {% for detonado in detonados %}
                 <a href="{% url 'catalogo:detalhes_detonado' detonado.id %}"
                    aria-label="Ver detalhes de {{ detonado.titulo }}"
@@ -76,11 +155,12 @@
                     </div>
                 </a>
             {% empty %}
-                <p class="col-span-full rounded-lg border border-border bg-card p-6 text-sm text-muted-foreground">
-                    Nenhum detonado encontrado.
+                <p class="col-span-full py-6 text-sm text-muted-foreground">
+                    Nenhum detonado corresponde aos filtros atuais.
                 </p>
             {% endfor %}
-        </div>
-    </section>
+            </div>
+        </section>
+    </div>
 </main>
 {% endblock %}

@@ -1,10 +1,12 @@
 import os
+import unicodedata
 from uuid import uuid4
 
 from PIL import Image, UnidentifiedImageError
 from django.core.files.storage import default_storage
 from django.http import Http404, HttpResponseForbidden
 from django.shortcuts import redirect, render
+from django.urls import reverse
 from django.utils import timezone
 from django.utils.dateparse import parse_datetime
 from django.views.decorators.http import require_http_methods, require_POST
@@ -110,8 +112,62 @@ def _listar_detonados_redis():
     )
 
 
+def _normalizar_busca(texto):
+    texto = unicodedata.normalize("NFKD", str(texto)).casefold()
+    return "".join(caractere for caractere in texto if not unicodedata.combining(caractere))
+
+
+def _corresponde_busca(dados, campos, consulta):
+    texto = " ".join(str(dados.get(campo, "")) for campo in campos)
+    return consulta in _normalizar_busca(texto)
+
+
 def index(request):
-    jogos = _listar_jogos_redis()
+    consulta_original = request.GET.get("q", "").strip()
+    consulta = _normalizar_busca(consulta_original)
+    tipo = request.GET.get("tipo", "todos")
+    if tipo == "detonados":
+        parametros = request.GET.copy()
+        parametros.pop("tipo", None)
+        url_detonados = reverse("catalogo:detonados")
+        query_string = parametros.urlencode()
+        if query_string:
+            url_detonados = f"{url_detonados}?{query_string}"
+        return redirect(url_detonados)
+
+    if tipo not in {"todos", "jogos", "detonados"}:
+        tipo = "todos"
+
+    todos_jogos = _listar_jogos_redis()
+    jogos = todos_jogos if tipo in {"todos", "jogos"} else []
+    detonados = []
+
+    if consulta and jogos:
+        campos_jogo = (
+            "titulo",
+            "descricao",
+            "genero",
+            "plataformas",
+            "desenvolvedora",
+            "distribuidora",
+        )
+        jogos = [
+            jogo for jogo in jogos
+            if _corresponde_busca(jogo, campos_jogo, consulta)
+        ]
+
+    if tipo in {"todos", "detonados"} and (consulta or tipo == "detonados"):
+        jogos_por_id = {jogo.get("id", ""): jogo for jogo in todos_jogos}
+        for detonado in _listar_detonados_redis():
+            jogo = jogos_por_id.get(detonado.get("jogo_id", ""), {})
+            detonado["jogo_titulo"] = jogo.get("titulo", "")
+            campos_detonado = ("titulo", "descricao", "conteudo", "jogo_titulo")
+            if not consulta or _corresponde_busca(detonado, campos_detonado, consulta):
+                detonado["detonado_img_url"] = _url_imagem(
+                    detonado.get("detonado_img") or jogo.get("imagem", "")
+                )
+                detonados.append(detonado)
+
     for jogo in jogos:
         jogo["imagem_url"] = _url_imagem(jogo.get("imagem", ""))
 
@@ -120,6 +176,9 @@ def index(request):
         "catalogo/index.html",
         {
             "jogos": jogos,
+            "detonados": detonados,
+            "consulta": consulta_original,
+            "tipo": tipo,
             "pode_criar_jogo": _eh_administrador(request),
         },
     )
@@ -232,7 +291,12 @@ def criar_jogo(request):
 
 
 def view_detonados(request):
-    detonados = []
+    consulta_original = request.GET.get("q", "").strip()
+    consulta = _normalizar_busca(consulta_original)
+    filtro_jogo = request.GET.get("jogo", "").strip()
+    filtro_genero = request.GET.get("genero", "").strip()
+    filtro_plataforma = request.GET.get("plataforma", "").strip()
+    todos_detonados = []
     for chave in redis_conn.scan_iter(match="detonado:*"):
         if chave.endswith(":etapas"):
             continue
@@ -248,16 +312,79 @@ def view_detonados(request):
         detonado["plataformas"] = (
             detonado.get("plataformas") or jogo.get("plataformas", "")
         )
-        detonado["detonado_img_url"] = _url_imagem(
-            detonado.get("detonado_img", "")
+        detonado["jogo_titulo"] = jogo.get("titulo", "")
+        campos_detonado = (
+            "titulo",
+            "descricao",
+            "conteudo",
+            "jogo_titulo",
+            "genero",
+            "plataformas",
         )
-        detonados.append(detonado)
+        if consulta and not _corresponde_busca(detonado, campos_detonado, consulta):
+            continue
+        detonado["detonado_img_url"] = _url_imagem(
+            detonado.get("detonado_img") or jogo.get("imagem", "")
+        )
+        todos_detonados.append(detonado)
+
+    jogos_disponiveis = sorted(
+        {
+            (detonado.get("jogo_id", ""), detonado["jogo_titulo"])
+            for detonado in todos_detonados
+            if detonado.get("jogo_id") and detonado["jogo_titulo"]
+        },
+        key=lambda jogo: _normalizar_busca(jogo[1]),
+    )
+    generos_disponiveis = sorted(
+        {detonado["genero"].strip() for detonado in todos_detonados if detonado["genero"].strip()},
+        key=_normalizar_busca,
+    )
+    plataformas_disponiveis = sorted(
+        {
+            plataforma.strip()
+            for detonado in todos_detonados
+            for plataforma in detonado["plataformas"].split(",")
+            if plataforma.strip()
+        },
+        key=_normalizar_busca,
+    )
+
+    detonados = [
+        detonado
+        for detonado in todos_detonados
+        if (not consulta or _corresponde_busca(
+            detonado,
+            ("titulo", "descricao", "conteudo", "jogo_titulo", "genero", "plataformas"),
+            consulta,
+        ))
+        and (not filtro_jogo or detonado.get("jogo_id") == filtro_jogo)
+        and (
+            not filtro_genero
+            or _normalizar_busca(detonado["genero"]) == _normalizar_busca(filtro_genero)
+        )
+        and (
+            not filtro_plataforma
+            or any(
+                _normalizar_busca(plataforma.strip())
+                == _normalizar_busca(filtro_plataforma)
+                for plataforma in detonado["plataformas"].split(",")
+            )
+        )
+    ]
 
     return render(
         request,
         "catalogo/detonados/detonados.html",
         {
             "detonados": detonados,
+            "consulta": consulta_original,
+            "filtro_jogo": filtro_jogo,
+            "filtro_genero": filtro_genero,
+            "filtro_plataforma": filtro_plataforma,
+            "jogos_disponiveis": jogos_disponiveis,
+            "generos_disponiveis": generos_disponiveis,
+            "plataformas_disponiveis": plataformas_disponiveis,
             "pode_criar_detonado": _esta_logado(request),
         },
     )
