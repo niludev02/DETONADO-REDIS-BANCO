@@ -215,10 +215,7 @@ def detalhes_jogo(request, jogo_id):
             "jogo": jogo,
             "detonados": detonados,
             "pode_editar_jogo": _eh_administrador(request),
-<<<<<<< HEAD
-=======
             "pode_criar_detonado": jogo.get("status", "ativo").strip().lower() != "inativo",
->>>>>>> origin/main
         },
     )
 
@@ -455,11 +452,8 @@ def criar_detonado(request, jogo_id):
     jogo = redis_conn.hgetall(f"jogo:{jogo_id}")
     if not jogo:
         raise Http404("Jogo não encontrado.")
-<<<<<<< HEAD
-=======
     if jogo.get("status", "ativo").strip().lower() == "inativo":
         return HttpResponseForbidden("Jogos inativos não permitem novos detonados.")
->>>>>>> origin/main
     if not jogo:
         raise Http404("Jogo não encontrado.")
 
