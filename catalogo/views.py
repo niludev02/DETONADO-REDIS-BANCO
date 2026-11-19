@@ -96,7 +96,13 @@ def _listar_jogos_redis():
         dados = redis_conn.hgetall(chave)
         if dados:
             jogos.append(dados)
-    return sorted(jogos, key=lambda jogo: jogo.get("titulo", "").lower())
+    return sorted(
+        jogos,
+        key=lambda jogo: (
+            jogo.get("status", "ativo").strip().lower() == "inativo",
+            jogo.get("titulo", "").casefold(),
+        ),
+    )
 
 
 def _listar_detonados_redis():
@@ -209,6 +215,7 @@ def detalhes_jogo(request, jogo_id):
             "jogo": jogo,
             "detonados": detonados,
             "pode_editar_jogo": _eh_administrador(request),
+            "pode_criar_detonado": jogo.get("status", "ativo").strip().lower() != "inativo",
         },
     )
 
@@ -445,6 +452,8 @@ def criar_detonado(request, jogo_id):
     jogo = redis_conn.hgetall(f"jogo:{jogo_id}")
     if not jogo:
         raise Http404("Jogo não encontrado.")
+    if jogo.get("status", "ativo").strip().lower() == "inativo":
+        return HttpResponseForbidden("Jogos inativos não permitem novos detonados.")
     if not jogo:
         raise Http404("Jogo não encontrado.")
 

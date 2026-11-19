@@ -98,10 +98,14 @@
                     Guias da comunidade para {{ jogo.titulo }}.
                 </p>
             </div>
-            <a href="{% url 'catalogo:criar_detonado' jogo.id %}"
-               class="inline-flex items-center gap-2 rounded-md border border-border bg-card px-4 py-2 text-sm font-medium text-foreground transition hover:border-primary/50">
-                Adicionar detonado
-            </a>
+            {% if pode_criar_detonado %}
+                <a href="{% url 'catalogo:criar_detonado' jogo.id %}"
+                   class="inline-flex items-center gap-2 rounded-md border border-border bg-card px-4 py-2 text-sm font-medium text-foreground transition hover:border-primary/50">
+                    Adicionar detonado
+                </a>
+            {% else %}
+                <p class="text-sm text-muted-foreground">Jogo inativo: criação de detonados bloqueada.</p>
+            {% endif %}
         </div>
 
         {% if detonados %}
