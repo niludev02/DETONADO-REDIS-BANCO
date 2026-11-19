@@ -96,9 +96,7 @@ def _listar_jogos_redis():
         dados = redis_conn.hgetall(chave)
         if dados:
             jogos.append(dados)
-<<<<<<< HEAD
-    return sorted(jogos, key=lambda jogo: jogo.get("titulo", "").lower())
-=======
+
     return sorted(
         jogos,
         key=lambda jogo: (
@@ -106,8 +104,6 @@ def _listar_jogos_redis():
             jogo.get("titulo", "").casefold(),
         ),
     )
->>>>>>> origin/main
-
 
 def _listar_detonados_redis():
     detonados = []

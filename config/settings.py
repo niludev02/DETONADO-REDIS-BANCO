@@ -25,14 +25,8 @@ SECRET_KEY = 'django-insecure-*5)))%=66@ko=+kv1x&b!gh7&$x$i6by1-*rx^=qtdm8#*ib$2
 # SECURITY WARNING: don't run with debug turned on in production!
 DEBUG = True
 
-<<<<<<< HEAD
 ALLOWED_HOSTS = ['localhost', '127.0.0.1', '.app.github.dev', 'mowing-sassy-drum.ngrok-free.dev']
 CSRF_TRUSTED_ORIGINS = ['https://localhost:8000', 'https://*.app.github.dev', 'https://mowing-sassy-drum.ngrok-free.dev']
-=======
-ALLOWED_HOSTS = ['localhost', '127.0.0.1', '.app.github.dev']
-CSRF_TRUSTED_ORIGINS = ['https://localhost:8000', 'https://*.app.github.dev']
->>>>>>> origin/main
-
 
 # Application definition
 

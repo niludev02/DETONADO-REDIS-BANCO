@@ -3,10 +3,7 @@ from tempfile import TemporaryDirectory
 from unittest.mock import patch
 
 from PIL import Image
-<<<<<<< HEAD
-=======
 from catalogo import views
->>>>>>> origin/main
 from django.core.files.storage import default_storage
 from django.core.files.uploadedfile import SimpleUploadedFile
 from django.test import TestCase
@@ -15,8 +12,6 @@ from django.urls import reverse
 
 class CriarJogoTests(TestCase):
     @patch("catalogo.views.redis_conn")
-<<<<<<< HEAD
-=======
     def test_jogos_inativos_aparecem_apos_os_ativos(self, redis):
         jogos = {
             "jogo:active-z": {"id": "active-z", "titulo": "Zelda", "status": "ativo"},
@@ -34,7 +29,6 @@ class CriarJogoTests(TestCase):
         )
 
     @patch("catalogo.views.redis_conn")
->>>>>>> origin/main
     def test_busca_por_jogo_tambem_encontra_detonado_relacionado(self, redis):
         jogos = {
             "jogo:game-123": {
@@ -370,8 +364,6 @@ class CriarJogoTests(TestCase):
 
 
 class DetonadosTests(TestCase):
-<<<<<<< HEAD
-=======
     @patch("catalogo.views.redis_conn")
     def test_jogo_inativo_bloqueia_formulario_e_post_de_detonado(self, redis):
         redis.hgetall.return_value = {
@@ -393,7 +385,6 @@ class DetonadosTests(TestCase):
         )
         redis.hset.assert_not_called()
 
->>>>>>> origin/main
     @patch("catalogo.views.Detonado.obter")
     @patch("catalogo.views.Jogo.obter")
     def test_edicao_exibe_formulario_preenchido(self, obter_jogo, obter_detonado):
