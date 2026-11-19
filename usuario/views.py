@@ -31,6 +31,34 @@ def _eh_administrador(request):
     )
 
 
+def _iniciar_sessao_usuario(request, usuario, dados=None):
+    usuario_id = str(usuario.pk)
+    if dados is None:
+        dados = redis_conn.hgetall(f"usuario:{usuario_id}")
+    if not dados:
+        dados = {
+            "id": usuario_id,
+            "nome": usuario.get_full_name() or usuario.get_username(),
+            "email": usuario.email,
+            "senha": usuario.password,
+            "is_admin": "1" if usuario.is_staff or usuario.is_superuser else "0",
+        }
+        redis_conn.hset(f"usuario:{usuario_id}", mapping=dados)
+        if usuario.email:
+            redis_conn.set(f"usuario:email:{usuario.email.strip().lower()}", usuario_id)
+
+    request.session["usuario_id"] = usuario_id
+    request.session["usuario_nome"] = dados.get("nome", "")
+    request.session["usuario_email"] = dados.get("email", usuario.email)
+    request.session["usuario_is_admin"] = (
+        dados.get("is_admin") == "1" or usuario.is_staff or usuario.is_superuser
+    )
+    foto_perfil = dados.get("foto_perfil", "")
+    request.session["usuario_foto_perfil"] = (
+        default_storage.url(foto_perfil) if foto_perfil else ""
+    )
+
+
 @require_http_methods(["GET", "POST"])
 def login_view(request):
     contexto = {
@@ -68,6 +96,7 @@ def login_view(request):
                 )
                 if usuario is not None:
                     auth_login(request, usuario)
+                    _iniciar_sessao_usuario(request, usuario)
                     autenticado = True
         else:
             usuario_id = redis_conn.get(f"usuario:email:{email}") if email else None
@@ -124,20 +153,19 @@ def cadastro_view(request):
 
         usuario_id = str(usuario.pk)
         email_key = f"usuario:email:{email}"
-        redis_conn.hset(
-            f"usuario:{usuario_id}",
-            mapping={
-                "id": usuario_id,
-                "nome": nome,
-                "email": email,
-                "senha": make_password(senha),
-            },
-        )
+        dados_usuario = {
+            "id": usuario_id,
+            "nome": nome,
+            "email": email,
+            "senha": make_password(senha),
+        }
+        redis_conn.hset(f"usuario:{usuario_id}", mapping=dados_usuario)
         redis_conn.set(email_key, usuario_id)
 
         autenticado = authenticate(request, username=usuario.username, password=senha)
         if autenticado is not None:
             auth_login(request, autenticado)
+            _iniciar_sessao_usuario(request, usuario, dados_usuario)
 
         request.session["cadastro_sucesso"] = True
         return redirect("home:index")

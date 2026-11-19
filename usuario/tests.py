@@ -29,13 +29,16 @@ class CadastroTests(TestCase):
         self.assertContains(resposta, "Criar minha conta")
         self.assertContains(resposta, 'name="confirmar_senha"')
 
-    def test_cadastro_cria_conta_com_senha_hash_e_autentica(self):
+    @patch("usuario.views.redis_conn")
+    def test_cadastro_cria_conta_com_senha_hash_e_autentica(self, redis):
         resposta = self.client.post(self.url, self.dados_validos)
 
         usuario = get_user_model().objects.get(email="novo@example.com")
         self.assertRedirects(resposta, reverse("home:index"))
         self.assertTrue(usuario.check_password(self.dados_validos["senha"]))
         self.assertEqual(int(self.client.session["_auth_user_id"]), usuario.pk)
+        self.assertEqual(self.client.session["usuario_id"], str(usuario.pk))
+        self.assertEqual(self.client.session["usuario_nome"], "Jogador Novo")
 
     def test_rejeita_email_duplicado_ignorando_maiusculas(self):
         get_user_model().objects.create_user(
@@ -98,7 +101,14 @@ class LoginTests(TestCase):
         self.assertContains(resposta, "Acesse sua conta")
         self.assertContains(resposta, 'name="email"')
 
-    def test_login_com_credenciais_validas(self):
+    @patch("usuario.views.redis_conn")
+    def test_login_com_credenciais_validas(self, redis):
+        redis.hgetall.return_value = {
+            "id": str(self.usuario.pk),
+            "nome": "Jogador",
+            "email": self.usuario.email,
+        }
+
         resposta = self.client.post(
             self.url,
             {"email": self.usuario.email, "senha": "senha-segura-123"},
@@ -106,6 +116,28 @@ class LoginTests(TestCase):
 
         self.assertRedirects(resposta, reverse("home:index"))
         self.assertEqual(int(self.client.session["_auth_user_id"]), self.usuario.pk)
+        self.assertEqual(self.client.session["usuario_id"], str(self.usuario.pk))
+
+    @patch("usuario.views.redis_conn")
+    def test_login_permite_acessar_perfil(self, redis):
+        redis.hgetall.side_effect = [
+            {},
+            {
+                "id": str(self.usuario.pk),
+                "nome": "Jogador",
+                "email": self.usuario.email,
+            },
+        ]
+
+        self.client.post(
+            self.url,
+            {"email": self.usuario.email, "senha": "senha-segura-123"},
+        )
+        resposta = self.client.get(reverse("usuarios:perfil"))
+
+        self.assertEqual(resposta.status_code, 200)
+        self.assertContains(resposta, "Jogador")
+        redis.hset.assert_called_once()
 
     def test_login_invalido_mostra_erro(self):
         resposta = self.client.post(

@@ -804,10 +804,11 @@ class DetonadosTests(TestCase):
                     [etapa["descricao"] for etapa in etapa_mapping],
                     ["Atravesse a floresta.", "Derrote o chefe."],
                 )
-                redis_views.sadd.assert_any_call(
+                redis_model.sadd.assert_called_once_with(
                     "jogo:game-123:detonados",
                     detonado_mapping["id"],
                 )
+                redis_views.sadd.assert_not_called()
                 self.assertEqual(
                     [chamada.args for chamada in redis_model.rpush.call_args_list],
                     [

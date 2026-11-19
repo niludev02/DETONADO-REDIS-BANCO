@@ -522,7 +522,6 @@ def criar_detonado(request, jogo_id):
             detonado_img=caminho_imagem,
             autor_id=_usuario_id(request),
         )
-        redis_conn.sadd(f"jogo:{jogo_id}:detonados", detonado_id)
         for etapa in etapas:
             etapa_id = Etapa.criar(
                 detonado_id=detonado_id,
