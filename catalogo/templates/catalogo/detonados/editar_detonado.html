@@ -1,0 +1,310 @@
+{% extends "base.html" %}
+
+{% block title %}Editar {{ detonado.titulo }}{% endblock %}
+
+{% block content %}
+<main class="mx-auto max-w-3xl space-y-6 px-4 py-8 sm:px-6 lg:py-12">
+    <header>
+        <a href="{% url 'catalogo:detalhes_detonado' detonado.id %}"
+           class="text-sm font-medium text-primary hover:underline">
+            Voltar ao detonado
+        </a>
+        <h1 class="mt-3 text-3xl font-semibold">Editar detonado</h1>
+        <p class="mt-2 text-base text-muted-foreground">
+            Atualize as informações, a imagem e as etapas de “{{ detonado.titulo }}”.
+        </p>
+    </header>
+
+    <section class="rounded-lg border border-border bg-card p-6 sm:p-8">
+        <form method="post" enctype="multipart/form-data"
+              action="{% url 'catalogo:editar_detonado' jogo.id detonado.id %}"
+              class="grid gap-5 sm:grid-cols-2">
+            {% csrf_token %}
+            {% for campo in form_detonado %}
+                {% if campo.name != 'detonado_img' %}
+                <div class="space-y-2 {% if campo.name == 'conteudo' %}sm:col-span-2{% endif %}">
+                    <label for="{{ campo.id_for_label }}" class="text-sm font-medium">
+                        {{ campo.label }}
+                    </label>
+                    {% if campo.name == 'conteudo' %}
+                        <div data-markdown-toolbar data-target="{{ campo.id_for_label }}"
+                             class="flex flex-wrap gap-2" aria-label="Formatação Markdown">
+                            <button type="button" data-markdown-action="bold" title="Negrito"
+                                    class="rounded border border-border px-3 py-1 text-sm font-bold hover:bg-secondary">B</button>
+                            <button type="button" data-markdown-action="italic" title="Itálico"
+                                    class="rounded border border-border px-3 py-1 text-sm italic hover:bg-secondary">I</button>
+                            <button type="button" data-markdown-action="line" title="Inserir linha horizontal"
+                                    class="rounded border border-border px-3 py-1 text-sm hover:bg-secondary">Linha</button>
+                            <button type="button" data-open-markdown-help aria-label="Ajuda sobre Markdown" title="Como usar Markdown"
+                                    class="inline-flex size-8 items-center justify-center rounded-full border border-border text-sm font-semibold hover:bg-secondary">?</button>
+                        </div>
+                    {% endif %}
+                    {{ campo }}
+                    {% if campo.help_text %}
+                        <p class="text-xs text-muted-foreground">{{ campo.help_text }}</p>
+                    {% endif %}
+                    {% for erro in campo.errors %}
+                        <p class="text-sm text-destructive" role="alert">{{ erro }}</p>
+                    {% endfor %}
+                </div>
+                {% endif %}
+            {% endfor %}
+
+            <div class="space-y-2 sm:col-span-2">
+                <label for="imagem-detonado" class="text-sm font-medium">Imagem do detonado</label>
+                {% if imagem_detonado_url %}
+                    <img src="{{ imagem_detonado_url }}" alt="Imagem atual do detonado"
+                         class="max-h-56 rounded-md border border-border object-cover">
+                    <label class="flex items-center gap-2 text-sm text-muted-foreground">
+                        <input type="checkbox" name="remover_detonado_img" value="1"
+                               {% if remover_detonado_img %}checked{% endif %}>
+                        Remover imagem atual
+                    </label>
+                {% endif %}
+                <input id="imagem-detonado" name="detonado_img" type="file" accept="image/*"
+                       class="w-full rounded-md border border-input bg-background px-3 py-2 text-sm text-foreground shadow-sm file:mr-3 file:rounded-md file:border-0 file:bg-secondary file:px-3 file:py-2 file:text-sm file:font-medium file:text-foreground">
+                <p class="text-xs text-muted-foreground">Envie uma imagem para substituir a atual.</p>
+                {% for erro in form_detonado.detonado_img.errors %}
+                    <p class="text-sm text-destructive" role="alert">{{ erro }}</p>
+                {% endfor %}
+            </div>
+
+            {% for erro in form_detonado.non_field_errors %}
+                <p class="text-sm text-destructive sm:col-span-2" role="alert">{{ erro }}</p>
+            {% endfor %}
+
+            <section aria-labelledby="etapas-heading" class="space-y-4 sm:col-span-2">
+                <div class="flex flex-wrap items-center justify-between gap-3">
+                    <div>
+                        <h2 id="etapas-heading" class="text-lg font-semibold">Etapas do detonado</h2>
+                        <p class="mt-1 text-sm text-muted-foreground">
+                            Edite, remova ou adicione etapas. As descrições aceitam Markdown.
+                        </p>
+                    </div>
+                    <button id="adicionar-etapa" type="button"
+                            class="rounded-md border border-border px-4 py-2 text-sm font-medium transition hover:bg-secondary">
+                        Adicionar etapa
+                    </button>
+                </div>
+                {% for erro in erros_etapas %}
+                    <p class="text-sm text-destructive" role="alert">{{ erro }}</p>
+                {% endfor %}
+
+                <div id="lista-etapas" class="space-y-4">
+                    {% for etapa in etapas_form %}
+                        <fieldset class="space-y-3 rounded-lg border border-border p-4">
+                            <legend class="px-1 text-sm font-medium">Etapa {{ forloop.counter }}</legend>
+                            <input type="hidden" name="etapa_id" value="{{ etapa.id }}">
+                            <div class="space-y-2">
+                                <label for="etapa-titulo-{{ forloop.counter0 }}" data-label="titulo" class="text-sm font-medium">
+                                    Título da etapa
+                                </label>
+                                <input id="etapa-titulo-{{ forloop.counter0 }}" name="etapa_titulo"
+                                       type="text" maxlength="150" value="{{ etapa.titulo }}"
+                                       placeholder="Ex.: Fase 1 — A floresta"
+                                       class="w-full rounded-md border border-input bg-background px-3 py-2 text-sm text-foreground shadow-sm placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring">
+                            </div>
+                            <div class="space-y-2">
+                                <label for="etapa-descricao-{{ forloop.counter0 }}" data-label="descricao" class="text-sm font-medium">
+                                    Descrição da etapa
+                                </label>
+                                <div data-markdown-toolbar data-target="etapa-descricao-{{ forloop.counter0 }}"
+                                     class="flex flex-wrap gap-2" aria-label="Formatação Markdown">
+                                    <button type="button" data-markdown-action="bold" title="Negrito"
+                                            class="rounded border border-border px-3 py-1 text-sm font-bold hover:bg-secondary">B</button>
+                                    <button type="button" data-markdown-action="italic" title="Itálico"
+                                            class="rounded border border-border px-3 py-1 text-sm italic hover:bg-secondary">I</button>
+                                    <button type="button" data-markdown-action="line" title="Inserir linha horizontal"
+                                            class="rounded border border-border px-3 py-1 text-sm hover:bg-secondary">Linha</button>
+                                    <button type="button" data-open-markdown-help aria-label="Ajuda sobre Markdown" title="Como usar Markdown"
+                                            class="inline-flex size-8 items-center justify-center rounded-full border border-border text-sm font-semibold hover:bg-secondary">?</button>
+                                </div>
+                                <textarea id="etapa-descricao-{{ forloop.counter0 }}" name="etapa_descricao"
+                                          rows="4" placeholder="Descreva como concluir esta etapa."
+                                          class="w-full rounded-md border border-input bg-background px-3 py-2 text-sm text-foreground shadow-sm placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring">{{ etapa.descricao }}</textarea>
+                            </div>
+                            <div class="space-y-2">
+                                <label for="etapa-img-{{ forloop.counter0 }}" data-label="imagem" class="text-sm font-medium">
+                                    Imagem da etapa (opcional)
+                                </label>
+                                {% if etapa.etapa_img_url %}
+                                    <img src="{{ etapa.etapa_img_url }}" alt="Imagem atual da etapa {{ forloop.counter }}"
+                                         class="max-h-48 rounded-md border border-border object-cover">
+                                    <label class="flex items-center gap-2 text-sm text-muted-foreground">
+                                        <input type="checkbox" name="remover_etapa_img" value="{{ etapa.id }}"
+                                               {% if etapa.remover_imagem %}checked{% endif %}>
+                                        Remover imagem atual
+                                    </label>
+                                {% endif %}
+                                <input id="etapa-img-{{ forloop.counter0 }}" name="etapa_img_{{ forloop.counter0 }}" type="file" accept="image/*"
+                                       class="w-full rounded-md border border-input bg-background px-3 py-2 text-sm text-foreground shadow-sm file:mr-3 file:rounded-md file:border-0 file:bg-secondary file:px-3 file:py-2 file:text-sm file:font-medium file:text-foreground">
+                            </div>
+                            {% if etapa.erro %}
+                                <p class="text-sm text-destructive" role="alert">{{ etapa.erro }}</p>
+                            {% endif %}
+                            <button type="button" data-remover-etapa
+                                    class="rounded-md border border-destructive/50 px-3 py-2 text-sm font-medium text-destructive hover:bg-destructive/10">
+                                Remover etapa
+                            </button>
+                        </fieldset>
+                    {% endfor %}
+                </div>
+            </section>
+
+            <div class="flex flex-wrap gap-3 sm:col-span-2">
+                <button type="submit"
+                        class="rounded-md bg-primary px-4 py-2 text-sm font-medium text-primary-foreground transition hover:bg-primary/90">
+                    Salvar alterações
+                </button>
+                <a href="{% url 'catalogo:detalhes_detonado' detonado.id %}"
+                   class="rounded-md border border-border px-4 py-2 text-sm font-medium transition hover:bg-secondary">
+                    Cancelar
+                </a>
+            </div>
+        </form>
+    </section>
+</main>
+
+<dialog id="ajuda-markdown" aria-labelledby="ajuda-markdown-titulo"
+        class="m-auto w-[calc(100%-2rem)] max-w-lg rounded-lg border border-border bg-card p-0 text-card-foreground shadow-xl backdrop:bg-black/60">
+    <div class="p-6 sm:p-8">
+        <h2 id="ajuda-markdown-titulo" class="text-xl font-semibold">Como formatar com Markdown</h2>
+        <ul class="mt-5 space-y-3 text-sm">
+            <li><code class="rounded bg-secondary px-1.5 py-1">**texto**</code> — <strong>negrito</strong></li>
+            <li><code class="rounded bg-secondary px-1.5 py-1">*texto*</code> — <em>itálico</em></li>
+            <li><code class="rounded bg-secondary px-1.5 py-1">---</code> em uma linha — linha divisória</li>
+            <li><code class="rounded bg-secondary px-1.5 py-1">- item</code> — item de lista</li>
+            <li><code class="rounded bg-secondary px-1.5 py-1">[nome](https://exemplo.com)</code> — link</li>
+            <li><code class="rounded bg-secondary px-1.5 py-1"># Título</code> — título de seção</li>
+        </ul>
+        <div class="mt-7 flex justify-end">
+            <button type="button" data-close-markdown-help
+                    class="rounded-md bg-primary px-4 py-2 text-sm font-medium text-primary-foreground hover:bg-primary/90">
+                Entendi
+            </button>
+        </div>
+    </div>
+</dialog>
+
+<template id="modelo-etapa">
+    <fieldset class="space-y-3 rounded-lg border border-border p-4">
+        <legend class="px-1 text-sm font-medium">Nova etapa</legend>
+        <input type="hidden" name="etapa_id" value="">
+        <div class="space-y-2">
+            <label class="text-sm font-medium" data-label="titulo">Título da etapa</label>
+            <input name="etapa_titulo" type="text" maxlength="150"
+                   placeholder="Ex.: Fase 1 — A floresta"
+                   class="w-full rounded-md border border-input bg-background px-3 py-2 text-sm text-foreground shadow-sm placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring">
+        </div>
+        <div class="space-y-2">
+            <label class="text-sm font-medium" data-label="descricao">Descrição da etapa</label>
+            <div data-markdown-toolbar class="flex flex-wrap gap-2" aria-label="Formatação Markdown">
+                <button type="button" data-markdown-action="bold" title="Negrito"
+                        class="rounded border border-border px-3 py-1 text-sm font-bold hover:bg-secondary">B</button>
+                <button type="button" data-markdown-action="italic" title="Itálico"
+                        class="rounded border border-border px-3 py-1 text-sm italic hover:bg-secondary">I</button>
+                <button type="button" data-markdown-action="line" title="Inserir linha horizontal"
+                        class="rounded border border-border px-3 py-1 text-sm hover:bg-secondary">Linha</button>
+                <button type="button" data-open-markdown-help aria-label="Ajuda sobre Markdown" title="Como usar Markdown"
+                        class="inline-flex size-8 items-center justify-center rounded-full border border-border text-sm font-semibold hover:bg-secondary">?</button>
+            </div>
+            <textarea name="etapa_descricao" rows="4"
+                      placeholder="Descreva como concluir esta etapa."
+                      class="w-full rounded-md border border-input bg-background px-3 py-2 text-sm text-foreground shadow-sm placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"></textarea>
+        </div>
+        <div class="space-y-2">
+            <label class="text-sm font-medium" data-label="imagem">Imagem da etapa (opcional)</label>
+            <input name="etapa_img" type="file" accept="image/*"
+                   class="w-full rounded-md border border-input bg-background px-3 py-2 text-sm text-foreground shadow-sm file:mr-3 file:rounded-md file:border-0 file:bg-secondary file:px-3 file:py-2 file:text-sm file:font-medium file:text-foreground">
+        </div>
+        <button type="button" data-remover-etapa
+                class="rounded-md border border-destructive/50 px-3 py-2 text-sm font-medium text-destructive hover:bg-destructive/10">
+            Remover etapa
+        </button>
+    </fieldset>
+</template>
+
+<script>
+    const listaEtapas = document.getElementById("lista-etapas");
+    const modeloEtapa = document.getElementById("modelo-etapa");
+    const formularioDetonado = document.querySelector("main form");
+    const ajudaMarkdown = document.getElementById("ajuda-markdown");
+
+    formularioDetonado.addEventListener("click", (evento) => {
+        const ajuda = evento.target.closest("[data-open-markdown-help]");
+        if (ajuda) {
+            ajudaMarkdown.showModal();
+            return;
+        }
+        if (evento.target.closest("[data-close-markdown-help]")) {
+            ajudaMarkdown.close();
+            return;
+        }
+
+        const removerEtapa = evento.target.closest("[data-remover-etapa]");
+        if (removerEtapa) {
+            removerEtapa.closest("fieldset").remove();
+            atualizarIndicesEtapas();
+            return;
+        }
+
+        const botao = evento.target.closest("[data-markdown-action]");
+        if (!botao) return;
+        const barra = botao.closest("[data-markdown-toolbar]");
+        const textarea = barra.dataset.target
+            ? document.getElementById(barra.dataset.target)
+            : barra.parentElement.querySelector("textarea");
+        if (!textarea) return;
+
+        const inicio = textarea.selectionStart;
+        const fim = textarea.selectionEnd;
+        const selecionado = textarea.value.slice(inicio, fim);
+        const acao = botao.dataset.markdownAction;
+        const antes = acao === "bold" ? "**" : acao === "italic" ? "*" : "\n\n---\n\n";
+        const depois = acao === "bold" ? "**" : acao === "italic" ? "*" : "";
+        const texto = acao === "line"
+            ? antes
+            : `${antes}${selecionado || "texto"}${depois}`;
+        textarea.setRangeText(texto, inicio, fim, "select");
+        textarea.focus();
+        if (!selecionado && acao !== "line") {
+            textarea.setSelectionRange(inicio + antes.length, inicio + antes.length + 5);
+        }
+    });
+
+    ajudaMarkdown.addEventListener("click", (evento) => {
+        if (evento.target === ajudaMarkdown) ajudaMarkdown.close();
+    });
+
+    function atualizarIndicesEtapas() {
+        listaEtapas.querySelectorAll("fieldset").forEach((fieldset, indice) => {
+            const legenda = fieldset.querySelector("legend");
+            const titulo = fieldset.querySelector('input[name="etapa_titulo"]');
+            const descricao = fieldset.querySelector('textarea[name="etapa_descricao"]');
+            const imagem = fieldset.querySelector('input[type="file"]');
+
+            legenda.textContent = `Etapa ${indice + 1}`;
+            titulo.id = `etapa-titulo-${indice}`;
+            descricao.id = `etapa-descricao-${indice}`;
+            imagem.id = `etapa-img-${indice}`;
+            imagem.name = `etapa_img_${indice}`;
+            fieldset.querySelector('[data-label="titulo"]').htmlFor = titulo.id;
+            fieldset.querySelector('[data-label="descricao"]').htmlFor = descricao.id;
+            fieldset.querySelector('[data-label="imagem"]').htmlFor = imagem.id;
+            fieldset.querySelector("[data-markdown-toolbar]").dataset.target = descricao.id;
+        });
+    }
+
+    document.getElementById("adicionar-etapa").addEventListener("click", () => {
+        const novaEtapa = modeloEtapa.content.cloneNode(true);
+        const fieldset = novaEtapa.querySelector("fieldset");
+        const indice = listaEtapas.children.length;
+        const titulo = fieldset.querySelector('input[name="etapa_titulo"]');
+        const descricao = fieldset.querySelector('textarea[name="etapa_descricao"]');
+        const imagem = fieldset.querySelector('input[name="etapa_img"]');
+        listaEtapas.appendChild(novaEtapa);
+        atualizarIndicesEtapas();
+        listaEtapas.lastElementChild.querySelector('input[name="etapa_titulo"]').focus();
+    });
+</script>
+{% endblock %}

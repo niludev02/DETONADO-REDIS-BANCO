@@ -1,0 +1,117 @@
+{% extends "base.html" %}
+
+{% block title %}Administração de jogos{% endblock %}
+
+{% block content %}
+<main class="mx-auto w-full max-w-6xl space-y-6 px-4 py-8 sm:px-6 lg:py-12">
+    <header class="flex flex-wrap items-end justify-between gap-4 border-b border-border pb-6">
+        <div>
+            <a href="{% url 'usuarios:perfil' %}" class="text-sm font-medium text-primary hover:underline">
+                Voltar ao perfil
+            </a>
+            <p class="mt-4 text-sm font-medium text-primary">Administração</p>
+            <h1 class="mt-1 text-3xl font-semibold tracking-tight">Jogos</h1>
+            <p class="mt-2 text-sm text-muted-foreground">
+                Gerencie os jogos do catálogo. Excluir um jogo também remove seus detonados e etapas.
+            </p>
+        </div>
+        <a href="{% url 'catalogo:criar' %}"
+           class="rounded-md bg-primary px-4 py-2 text-sm font-medium text-primary-foreground transition hover:bg-primary/90">
+            Adicionar jogo
+        </a>
+    </header>
+
+    <section aria-label="Jogos cadastrados" class="overflow-hidden rounded-lg border border-border bg-card">
+        {% if jogos %}
+            <div class="overflow-x-auto">
+                <table class="w-full min-w-[700px] text-left text-sm">
+                    <thead class="border-b border-border bg-background text-xs uppercase tracking-wide text-muted-foreground">
+                        <tr>
+                            <th scope="col" class="px-5 py-4 font-semibold">Jogo</th>
+                            <th scope="col" class="px-5 py-4 font-semibold">Gênero</th>
+                            <th scope="col" class="px-5 py-4 font-semibold">Plataformas</th>
+                            <th scope="col" class="px-5 py-4 font-semibold">Status</th>
+                            <th scope="col" class="px-5 py-4 text-right font-semibold">Ações</th>
+                        </tr>
+                    </thead>
+                    <tbody class="divide-y divide-border">
+                        {% for jogo in jogos %}
+                            <tr class="transition hover:bg-background/70">
+                                <th scope="row" class="px-5 py-4 font-medium">
+                                    <a href="{% url 'catalogo:detalhes' jogo.id %}"
+                                       class="flex items-center gap-3 hover:text-primary">
+                                        {% if jogo.imagem_url %}
+                                            <img src="{{ jogo.imagem_url }}" alt=""
+                                                 class="size-12 shrink-0 rounded-md border border-border object-cover">
+                                        {% endif %}
+                                        <span>{{ jogo.titulo }}</span>
+                                    </a>
+                                </th>
+                                <td class="px-5 py-4 text-muted-foreground">{{ jogo.genero|default:"—" }}</td>
+                                <td class="px-5 py-4 text-muted-foreground">{{ jogo.plataformas|default:"—" }}</td>
+                                <td class="px-5 py-4 text-muted-foreground">{{ jogo.status|default:"—"|title }}</td>
+                                <td class="px-5 py-4 text-right">
+                                    <button type="button"
+                                            data-open-delete-game
+                                            data-delete-url="{% url 'usuarios:excluir_jogo_administracao' jogo.id %}"
+                                            data-game-title="{{ jogo.titulo }}"
+                                            class="rounded-md border border-destructive/50 px-3 py-2 text-sm font-medium text-destructive transition hover:bg-destructive/10">
+                                        Excluir
+                                    </button>
+                                </td>
+                            </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        {% else %}
+            <p class="p-6 text-sm text-muted-foreground">Ainda não há jogos cadastrados.</p>
+        {% endif %}
+    </section>
+</main>
+
+<dialog id="modal-excluir-jogo" aria-labelledby="modal-excluir-jogo-titulo"
+        class="m-auto w-[calc(100%-2rem)] max-w-lg rounded-lg border border-border bg-card p-0 text-card-foreground shadow-xl backdrop:bg-black/60">
+    <form id="form-excluir-jogo" method="post" class="p-6 sm:p-8">
+        {% csrf_token %}
+        <h2 id="modal-excluir-jogo-titulo" class="text-xl font-semibold text-destructive">
+            Excluir jogo?
+        </h2>
+        <p class="mt-3 text-sm leading-6 text-muted-foreground">
+            O jogo <strong id="nome-jogo-excluir" class="text-foreground"></strong>, seus detonados e etapas serão removidos permanentemente.
+        </p>
+        <div class="mt-7 flex flex-wrap justify-end gap-3">
+            <button type="button" data-close-delete-game
+                    class="rounded-md border border-border px-4 py-2 text-sm font-medium hover:bg-secondary">
+                Cancelar
+            </button>
+            <button type="submit"
+                    class="rounded-md bg-destructive px-4 py-2 text-sm font-medium text-destructive-foreground hover:bg-destructive/90">
+                Excluir jogo
+            </button>
+        </div>
+    </form>
+</dialog>
+
+<script>
+    const modalExcluirJogo = document.getElementById("modal-excluir-jogo");
+    const formExcluirJogo = document.getElementById("form-excluir-jogo");
+    const nomeJogoExcluir = document.getElementById("nome-jogo-excluir");
+
+    document.addEventListener("click", (evento) => {
+        const botaoExcluir = evento.target.closest("[data-open-delete-game]");
+        if (botaoExcluir) {
+            formExcluirJogo.action = botaoExcluir.dataset.deleteUrl;
+            nomeJogoExcluir.textContent = botaoExcluir.dataset.gameTitle;
+            modalExcluirJogo.showModal();
+            return;
+        }
+        if (
+            evento.target === modalExcluirJogo ||
+            evento.target.closest("[data-close-delete-game]")
+        ) {
+            modalExcluirJogo.close();
+        }
+    });
+</script>
+{% endblock %}

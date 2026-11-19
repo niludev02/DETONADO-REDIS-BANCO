@@ -1,0 +1,31 @@
+<dialog id="modal-edit-email" aria-labelledby="modal-edit-email-title"
+		class="m-auto w-[calc(100%-2rem)] max-w-lg rounded-lg border border-border bg-card p-0 text-card-foreground shadow-xl backdrop:bg-black/60"
+		{% if modal_aberto == "editar_email" %}data-open-on-load{% endif %}>
+	<form method="post" action="{% url 'usuarios:seguranca_perfil' %}" class="p-6 sm:p-8">
+		{% csrf_token %}
+		<input type="hidden" name="acao" value="editar_email">
+		<h2 id="modal-edit-email-title" class="text-xl font-semibold">Alterar e-mail</h2>
+		<p class="mt-2 text-sm leading-6 text-muted-foreground">
+			O novo endereço será usado para entrar na sua conta.
+		</p>
+
+		<label for="novo-email" class="mt-6 block text-sm font-medium">Novo e-mail</label>
+		<input id="novo-email" name="email" type="email" required maxlength="254"
+			   autocomplete="email" value="{{ usuario.email }}"
+			   class="mt-2 h-11 w-full rounded-md border border-input bg-background px-3 text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring">
+		{% if modal_aberto == "editar_email" and modal_erro %}
+			<p class="mt-2 text-sm text-destructive" role="alert">{{ modal_erro }}</p>
+		{% endif %}
+
+		<div class="mt-7 flex flex-wrap justify-end gap-3">
+			<button type="button" data-close-modal
+					class="rounded-md border border-border px-4 py-2 text-sm font-medium hover:bg-secondary">
+				Cancelar
+			</button>
+			<button type="submit"
+					class="rounded-md bg-primary px-4 py-2 text-sm font-medium text-primary-foreground hover:bg-primary/90">
+				Salvar e-mail
+			</button>
+		</div>
+	</form>
+</dialog>

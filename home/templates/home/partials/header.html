@@ -1,0 +1,74 @@
+{% load static %}
+<header class="border-b border-border">
+    <div class="mx-auto flex max-w-4xl items-center justify-between p-6">
+        <a href="{% url 'home:index' %}" aria-label="Detonado — início">
+            <img src="{% static 'img/logo.jpeg' %}" alt="Detonado" class="h-7 w-auto">
+        </a>
+        <nav aria-label="Navegação principal">
+            <ul class="flex gap-4">
+                <li>
+                    <a href="{% url 'home:index' %}"
+                       class="{% if request.resolver_match.url_name == 'index' and request.resolver_match.namespace == 'home' %}font-medium text-primary{% else %}text-muted-foreground transition-colors hover:text-foreground{% endif %}"
+                       {% if request.resolver_match.url_name == 'index' and request.resolver_match.namespace == 'home' %}aria-current="page"{% endif %}>
+                        Início
+                    </a>
+                </li>
+                <li>
+                    <a href="{% url 'catalogo:index' %}"
+                       class="{% if request.resolver_match.namespace == 'catalogo' and request.resolver_match.url_name != 'detonados' and request.resolver_match.url_name != 'detalhes_detonado' and request.resolver_match.url_name != 'criar_detonado' and request.resolver_match.url_name != 'editar_detonado' %}font-medium text-primary{% else %}text-muted-foreground transition-colors hover:text-foreground{% endif %}"
+                       {% if request.resolver_match.namespace == 'catalogo' and request.resolver_match.url_name != 'detonados' and request.resolver_match.url_name != 'detalhes_detonado' and request.resolver_match.url_name != 'criar_detonado' and request.resolver_match.url_name != 'editar_detonado' %}aria-current="page"{% endif %}>
+                        Jogos
+                    </a>
+                </li>
+                <li>
+                    <a href="{% url 'catalogo:detonados' %}"
+                       class="{% if request.resolver_match.url_name == 'detonados' or request.resolver_match.url_name == 'detalhes_detonado' or request.resolver_match.url_name == 'criar_detonado' or request.resolver_match.url_name == 'editar_detonado' %}font-medium text-primary{% else %}text-muted-foreground transition-colors hover:text-foreground{% endif %}"
+                       {% if request.resolver_match.url_name == 'detonados' or request.resolver_match.url_name == 'detalhes_detonado' or request.resolver_match.url_name == 'criar_detonado' or request.resolver_match.url_name == 'editar_detonado' %}aria-current="page"{% endif %}>
+                        Detonados
+                    </a>
+                </li>
+            </ul>
+        </nav>
+        <div class="flex items-center gap-2">
+            {% if request.user.is_authenticated or request.session.usuario_id %}
+                <a href="{% url 'usuarios:perfil' %}" aria-label="Perfil" title="Perfil"
+                   class="inline-flex min-h-10 items-center gap-2 rounded-md px-3 py-2 text-secondary-foreground transition hover:bg-secondary/80">
+                    {% if request.session.usuario_foto_perfil %}
+                        <img src="{{ request.session.usuario_foto_perfil }}" alt=""
+                             class="size-8 shrink-0 rounded-full object-cover">
+                    {% else %}
+                        <svg aria-hidden="true" focusable="false" class="size-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+                            <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"></path>
+                            <circle cx="12" cy="7" r="4"></circle>
+                        </svg>
+                    {% endif %}
+                    {% if request.session.usuario_nome %}
+                    <div class="flex flex-col items-start">
+                        <span class="text-sm text-muted-foreground">{{ request.session.usuario_nome }}</span>
+                        {% if request.session.usuario_is_admin or request.user.is_staff or request.user.is_superuser %}
+                            <span class="text-[10px] font-medium uppercase tracking-wide text-primary">Administrador</span>
+                        {% endif %}
+                    </div>
+                    {% elif request.user.is_authenticated %}
+                    <div class="flex flex-col items-start">
+                        <span class="text-sm text-muted-foreground">{{ request.user.get_username }}</span>
+                        {% if request.session.usuario_is_admin or request.user.is_staff or request.user.is_superuser %}
+                            <span class="text-[10px] font-medium uppercase tracking-wide text-primary">Administrador</span>
+                        {% endif %}
+                    </div>
+                    {% endif %}
+                </a>
+            {% else %}
+                <a href="{% url 'usuarios:login' %}" aria-label="Entrar" title="Entrar"
+                   class="inline-flex size-10 items-center justify-center rounded-md bg-primary text-primary-foreground transition hover:bg-primary/90">
+                    <svg aria-hidden="true" focusable="false" class="size-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+                        <path d="M13 4h6v16h-6"></path>
+                        <path d="m13 4-6 2v12l6 2"></path>
+                        <path d="M3 12h9"></path>
+                        <path d="m9 9 3 3-3 3"></path>
+                    </svg>
+                </a>
+            {% endif %}
+        </div>
+    </div>
+</header>
